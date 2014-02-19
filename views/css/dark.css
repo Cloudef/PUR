@@ -1,0 +1,71 @@
+body {
+    color:#CACACA;
+    background-color:#121212;
+}
+
+h1 { color:#C7C7CC; }
+h2 { color:#FEA63C; }
+h3 { color:#FEA63C; }
+
+button {
+    color:#FFF;
+}
+
+input.button {
+    background-color:#FEA63C;
+}
+
+table {
+    background-color:#111;
+}
+
+table tr.header {
+    border-bottom:1px solid #FEA63C;
+}
+
+table tr.odd {
+    background-color:#222;
+}
+
+.header {
+    background-color:#181818;
+    border-bottom:6px solid #2C2C2C;
+}
+
+.footer {
+    color:#66AABB;
+}
+
+.langnav, .stylenav {
+    color:#CACACA;
+}
+
+.box {
+    border:1px solid #2C2C2C;
+    box-shadow:0 0 5px #1C1C1C;
+}
+
+.box header {
+    border-bottom:1px solid #777;
+}
+
+.session article, .comment article, textarea.comment {
+    color:#CACACA;
+    background-color:#181818;
+}
+
+.comment .block {
+    background-color:#121212;
+    border:1px solid #2C2C2C;
+}
+
+.comment .js_togglable header {
+    background-color: #121212;
+    color: #FFF;
+}
+
+.comment .js_toggle {
+    color: #FFF;
+}
+
+/* vim: set ts=8 sw=4 tw=0 ft=css :*/

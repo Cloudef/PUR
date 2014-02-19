@@ -1,0 +1,255 @@
+html, body {
+    height:100%;
+}
+
+body {
+    font-family:arial, sans-serif;
+    font-size:12px;
+}
+
+pre {
+    margin:0;
+}
+
+input.link, input.link:visited, a:link, a:visited { text-decoration:none; color:#D81860; }
+input.link:hover, input.link:active, a:hover, a:active { text-decoration:underline; color:#D81860; }
+form.link { display:inline; }
+button, input.link {
+    background:none;
+    border:none;
+    cursor:pointer;
+    display:inline;
+    width:auto;
+    margin:0;
+    padding:0;
+}
+
+h1 { margin:0.2em 0 0.2em 0; }
+h2 { font-size:18px; margin:0.1em 0 0.1em 0; }
+h3 { font-size:12px; margin:1em 0 1em 0; }
+article h3 { font-size:12px; margin:1em 0 0 0; }
+h3.header {
+    border-bottom:1px solid;
+    padding:0.4em;
+}
+
+ul {
+    list-style-type:none;
+    margin:0;
+    padding-left:0.5em;
+}
+
+table {
+    width:100%;
+}
+
+table tr.header {
+    height:2.2em;
+}
+
+table th {
+    text-align:left;
+}
+
+table, form {
+    margin:0.4em 0;
+}
+
+textarea {
+    width:99.8%;
+    min-width:99.8%;
+    max-width:99.8%;
+    height:5em;
+    min-height:5em;
+    max-height:20em;
+}
+
+textarea.comment {
+    margin:0;
+}
+
+input {
+    background-color:#FFF;
+    border:1px solid #1C1C1C;
+    border-radius:5px;
+    color:#2A2A2A;
+    padding:5px 10px 5px 10px;
+    margin:2px;
+    width:182px;
+    outline:none;
+    display:inline-block;
+}
+
+input[type="file"] {
+    width:284px;
+}
+
+input.button {
+    color:#2A2A2A;
+    font-weight:bold;
+    height:3em;
+    width:205px;
+}
+
+input.login {
+    background:url('/images/user.png') no-repeat scroll 95% center #FFF;
+    width:84px;
+    text-align:left;
+}
+
+input.upload {
+    background:url('/images/upload.png') no-repeat scroll 95% center #FFF;
+    width:84px;
+    text-align:left;
+}
+
+input.comment {
+    background:url('/images/comment.png') no-repeat scroll 95% center #FFF;
+    width:74px;
+    height:2em;
+    margin:0;
+    text-align:left;
+}
+
+input.search {
+    background:url('/images/search.png') no-repeat scroll 95% center #FFF;
+    padding:5px 27px 5px 10px;
+    width:165px;
+}
+
+input.username {
+    background:url('/images/user.png') no-repeat scroll 95% center #FFF;
+    padding:5px 27px 5px 10px;
+    width:165px;
+}
+
+input.email {
+    background:url('/images/mail.png') no-repeat scroll 95% center #FFF;
+    padding:5px 27px 5px 10px;
+    width:165px;
+}
+
+input.password {
+    background:url('/images/lock.png') no-repeat scroll 93.5% center #FFF;
+    padding:5px 27px 5px 10px;
+    width:165px;
+}
+
+button.toggle {
+    width:20px;
+}
+
+.topblock {
+    text-align:center;
+}
+
+.container {
+    min-height:100%;
+    position:relative;
+}
+
+.header {
+    padding:0 2% 0 2%;
+}
+
+.navigation {
+    margin:0 auto;
+    padding:1em 2% 0 2%;
+}
+
+.content {
+    margin:0 auto;
+    padding:0 2% 8em 2%;
+}
+
+.footer {
+    position:absolute;
+    text-align:center;
+    width:100%;
+    height:4em;
+    bottom:0;
+}
+
+.langnav {
+    float:left;
+    margin:1em;
+}
+
+.stylenav {
+    float:right;
+    margin:1em;
+}
+
+.box {
+    padding:0 1em 0em 1em;
+    margin:1em 0 1em 0;
+}
+
+.box.actions {
+    position:absolute;
+    width:110px;
+    right:46px;
+}
+
+.box.actions h3 {
+    margin:0.2em 0;
+}
+
+.box.login {
+    width:300px;
+}
+
+.box.login input {
+    margin-right:auto;
+    margin-left:auto;
+    display:block;
+}
+
+.box.login span {
+    color:#2A2A2A;
+    background-color:#D81860;
+    border:1px solid #D71750;
+    border-radius:5px;
+    color:#121212;
+    padding:5px 10px 5px 10px;
+    margin:2px;
+    width:182px;
+    outline:none;
+    text-align:center;
+    font-weight:bold;
+    margin-right:auto;
+    margin-left:auto;
+    display:block;
+}
+
+.recent, .statistics {
+    padding:0 1em 1em 1em;
+}
+
+.session, .comment, .revision {
+    margin:1em 0;
+}
+
+.revision header {
+    font-weight:bold;
+}
+
+.comment header {
+    background:url('/images/comment.png') no-repeat scroll 0 center;
+    font-weight:bold;
+    padding:0 0 0 2.0em;
+}
+
+.comment article {
+    padding:0.5em 0.5em;
+    max-height:500px;
+    overflow:auto;
+}
+
+.comment .block {
+    margin:1px;
+    padding:2px;
+    display:inline-block;
+}
+
+/* vim: set ts=8 sw=4 tw=0 ft=css :*/
