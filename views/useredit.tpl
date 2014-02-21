@@ -34,7 +34,7 @@
                 % if session == USER['session']:
                 <strong>{{_('Current')}}</strong>
                 % else:
-                {{!csrf_link('/revoke/{}'.format(session), _('Revoke'))}}
+                {{!referrer_csrf_link('/revoke/{}'.format(session), _('Revoke'))}}
                 %end
                 <div style='float:right;'>IP: {{data.get('IP') or _('Unknown IP')}}</div>
             </header>

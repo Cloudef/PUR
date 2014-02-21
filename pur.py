@@ -178,6 +178,15 @@ def status_json_ok():
     '''return ok status as json response'''
     return dump_json({'status': 'ok'})
 
+def lastpage():
+    '''return path for last page (using, post or query value)'''
+    referrer = '/'
+    if 'REFERRER' in request.forms and request.forms['REFERRER']:
+        referrer = request.forms['REFERRER']
+    elif 'REFERRER' in request.query and request.forms['REFERRER']:
+        referrer = request.query['REFERRER']
+    return referrer
+
 def not_valid_csrf_cb():
     '''callback for csrf_check'''
     bottle.abort(403, _('wrong CSRF token supplied'))
@@ -324,7 +333,7 @@ def user_account(user=None):
         abort(403)
     if is_json_request():
         sessions = []
-        key_filter = ['CSRF', 'oldpath', 'valid']
+        key_filter = ['CSRF', 'valid']
         for sid in USER.get('sessions'):
             data = SESSIONMANAGER.get_session(sid)
             if not data:
@@ -346,7 +355,7 @@ def revoke(sessionid=None):
     USERMANAGER.set_user(USER['name'], USER)
     if is_json_request():
         return status_json_ok()
-    return redirect(SESSION['oldpath'])
+    return redirect(lastpage())
 
 @route('/logout', ['POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
@@ -478,7 +487,7 @@ def change_language(lang=None):
     SESSIONMANAGER.save(SESSION)
     if is_json_request():
         return status_json_ok()
-    return redirect(SESSION['oldpath'])
+    return redirect(lastpage())
 
 @route('/style/<style>', ['POST'])
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
@@ -490,7 +499,7 @@ def change_style(style=None):
     SESSIONMANAGER.save(SESSION)
     if is_json_request():
         return status_json_ok()
-    return redirect(SESSION['oldpath'])
+    return redirect(lastpage())
 
 @route('/js/translations/<key>')
 def get_js_translations(key=None):
@@ -735,6 +744,8 @@ BaseTemplate.defaults['PURTRANSLATIONS'] = TRANSLATIONS
 BaseTemplate.defaults['PURBETA'] = BETA
 
 # template functions
+CSRF_INPUT = lambda: '<input type="hidden" name="CSRF" value="{}"/>'.format(SESSION['CSRF'])
+REFERRER_INPUT = lambda: '<input type="hidden" name="REFERRER" value="{}"/>'.format(request.path)
 BaseTemplate.defaults['CL'] = comment_markup
 BaseTemplate.defaults['ML'] = markup
 BaseTemplate.defaults['_ML'] = lambda x: markup(_(x))
@@ -742,9 +753,10 @@ BaseTemplate.defaults['get_session'] = SESSIONMANAGER.get_session
 BaseTemplate.defaults['js_togglable'] = js_togglable
 BaseTemplate.defaults['linkify'] = replace.html_linkify_and_escape
 BaseTemplate.defaults['link'] = replace.html_link
-BaseTemplate.defaults['csrf'] = lambda: SESSION['CSRF']
-BaseTemplate.defaults['csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/><input type="hidden" name="CSRF" value="{}"/></form>'.format(x, x if not y else y, SESSION['CSRF'])
-BaseTemplate.defaults['csrf_input'] = lambda: '<input type="hidden" name="CSRF" value="{}"/>'.format(SESSION['CSRF'])
+BaseTemplate.defaults['csrf_input'] = CSRF_INPUT
+BaseTemplate.defaults['referrer_input'] = REFERRER_INPUT
+BaseTemplate.defaults['csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/>{}</form>'.format(x, x if not y else y, CSRF_INPUT())
+BaseTemplate.defaults['referrer_csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/>{}{}</form>'.format(x, x if not y else y, CSRF_INPUT(), REFERRER_INPUT())
 BaseTemplate.defaults['diff'] = lambda x: replace.syntax(x, 'diff')
 
 # run

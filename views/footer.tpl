@@ -1,12 +1,12 @@
 <%
     styles = []
     for style in PURSTYLES:
-        styles.append(csrf_link('/style/{}'.format(style), style))
+        styles.append(referrer_csrf_link('/style/{}'.format(style), style))
     end
 
     langs = []
     for lang in PURTRANSLATIONS:
-        langs.append(csrf_link('/lang/{}'.format(lang), lang))
+        langs.append(referrer_csrf_link('/lang/{}'.format(lang), lang))
     end
 
     stylenav = ' | '.join(styles)

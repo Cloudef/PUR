@@ -129,9 +129,6 @@ class BaseSession(object):
         if 'CSRF' not in data:
             data['CSRF'] = _gen_csrf()
 
-        # store old path
-        data['oldpath'] = bottle.request.headers.get('Referer')
-
         # Cache agent
         data['IP'] = bottle.request.environ.get('REMOTE_ADDR')
         agent = bottle.request.headers.get('User-Agent')
