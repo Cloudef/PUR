@@ -1,7 +1,7 @@
 <div class='comment'>
     <header>
         Comment by {{!link('/user/{}/recipes'.format(comment_user), comment_user)}}
-        % if USER and USER['name'] == comment_user:
+        % if USER and (USER['name'] == comment_user or USER['level'] >= LEVELS['moderator']):
         <div style='float:right;'>
             % if not is_revision:
             {{!csrf_link('/comment/delete/{}/{}'.format(pkgname, comment_id), _('delete'))}} | {{comment_date}}

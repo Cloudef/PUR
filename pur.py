@@ -23,7 +23,8 @@ from lib.bottle import BaseTemplate, template, static_file
 ACCEPT = ['text/html', 'application/json']
 TRANSLATIONS = ['en', 'fi']
 VERSION = 'v1.0.0'
-STYLES = ['light', 'dark']
+STYLES = ['moe', 'light', 'dark']
+LEVELS = {'user': 0, 'contributor': 1, 'moderator': 98, 'admin': 99}
 OPT = {'style': 'dark'}
 BETA = True
 
@@ -262,6 +263,34 @@ def recipe_page(pkgname=None):
     '''recipe page'''
     return recipe_revision_page(pkgname)
 
+@route('/recipe/abandon/<pkgname>', ['POST'])
+@session.valid_session(SESSIONMANAGER, not_valid_session_cb)
+@session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
+def abandon_recipe(pkgname=None):
+    '''abandon recipe'''
+    recipe = RECIPEMANAGER.get_recipe(pkgname)
+    if not recipe:
+        abort(400, _('recipe must exist'))
+    if not USER or USER['name'] != recipe['user']:
+        abort(403)
+    RECIPEMANAGER.set_maintainer(pkgname, '')
+    if is_json_request():
+        return status_json_ok()
+    return redirect('/recipe/{}'.format(pkgname))
+
+@route('/recipe/adopt/<pkgname>', ['POST'])
+@session.valid_session(SESSIONMANAGER, not_valid_session_cb)
+@session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
+def adopt_recipe(pkgname=None):
+    '''adopt recipe'''
+    recipe = RECIPEMANAGER.get_recipe(pkgname)
+    if not recipe:
+        abort(400, _('recipe must exist'))
+    RECIPEMANAGER.set_maintainer(pkgname, USER['name'])
+    if is_json_request():
+        return status_json_ok()
+    return redirect('/recipe/{}'.format(pkgname))
+
 @route('/recipe/delete/<pkgname>/<revision>', ['POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
@@ -270,12 +299,12 @@ def delete_recipe_revision(pkgname=None, revision=None):
     recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
     if not recipe:
         abort(400, _('recipe and revision must exist'))
-    if not USER or USER['name'] != recipe['user']:
+    if not USER or (USER['level'] < LEVELS['moderator'] and USER['name'] != recipe['user']):
         abort(403)
     RECIPEMANAGER.remove_recipe(pkgname, recipe['revision'], remove_revisions=True, remove_comments=True)
     if is_json_request():
         return status_json_ok()
-    if revision:
+    if recipe.get('parent'):
         return redirect('/recipe/{}'.format(pkgname))
     return redirect('/user/{}/recipes'.format(USER['name']))
 
@@ -357,7 +386,7 @@ def delete_comment_from_revision(pkgname=None, revision=None, cid=None):
     comment = RECIPEMANAGER.get_comment(pkgname, recipe['revision'], cid)
     if not comment:
         abort(400, _('comment must exist'))
-    if not USER or USER['name'] != comment['user']:
+    if not USER or (USER['level'] < LEVELS['moderator'] and USER['name'] != comment['user']):
         abort(403)
     RECIPEMANAGER.remove_comment(pkgname, recipe['revision'], cid)
     if revision:
@@ -569,6 +598,10 @@ def get_css(css=None):
 @route('/images/<sub>/<image>')
 def get_image(image=None, sub=None):
     '''fetch image'''
+    if image == 'moe':
+        import random
+        image = random.choice(os.listdir('views/images/moe'))
+        return static_file(image, root=('views/images/moe'))
     if sub:
         from os.path import join as path_join
         return static_file(image, root=path_join('views/images', sub))
@@ -790,6 +823,7 @@ BaseTemplate.defaults['PURVERSION'] = VERSION
 BaseTemplate.defaults['PURSTYLES'] = STYLES
 BaseTemplate.defaults['PURTRANSLATIONS'] = TRANSLATIONS
 BaseTemplate.defaults['PURBETA'] = BETA
+BaseTemplate.defaults['LEVELS'] = LEVELS
 
 # template functions
 CSRF_INPUT = lambda: '<input type="hidden" name="CSRF" value="{}"/>'.format(SESSION['CSRF'])

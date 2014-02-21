@@ -17,7 +17,11 @@
         % end
         <td>{{recipe['pkgver']}}</td>
         <td>{{recipe['pkgdesc']}}</td>
+        % if recipe['maintainer']:
         <td>{{!link('/user/{}/recipes'.format(recipe['maintainer']), recipe['maintainer'])}}</td>
+        % else:
+        <td>{{_('abandoned')}}</td>
+        % end
     </tr>
     % odd = ('', ' odd')[odd == True]
     % end

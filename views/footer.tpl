@@ -1,6 +1,9 @@
 <%
     styles = []
     for style in PURSTYLES:
+        if not USER and style == 'moe':
+            continue
+        end
         styles.append(referrer_csrf_link('/style/{}'.format(style), style))
     end
 

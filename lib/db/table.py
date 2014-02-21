@@ -58,6 +58,8 @@ def _dict_factory(cur, row):
 
 def _match_pattern(subvalue, value):
     '''MATCH override'''
+    if not subvalue or not value:
+        return False
     subvalue = subvalue.lower()
     value = value.lower()
     if subvalue in value:

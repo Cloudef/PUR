@@ -4,7 +4,12 @@
 <section class='box'>
     <header>
         % if not is_revision:
-        <h2>{{recipe['pkgname']}}</h2>
+        <h2>
+            {{recipe['pkgname']}}
+            % if not recipe['user']:
+            ({{_('abandoned')}})
+            % end
+        </h2>
         % else:
         <div style='float:right;'>{{!link('/recipe/{}'.format(recipe['pkgname']), _('parent'))}}</div>
         <h2>{{recipe['pkgname']}} ({{recipe['revision']}})</h2>
@@ -15,8 +20,18 @@
         {{!link(recipe['recipepath'], _('View PNDBUILD'))}}
         {{!link(recipe['tarpath'], _('Download tarball'))}}
         % if is_revision and USER and USER['name'] == recipe['maintainer']:
+        <br/><br/>
         {{!referrer_csrf_link('/recipe/accept/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Accept revision'))}}
         {{!referrer_csrf_link('/recipe/reject/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Reject revision'))}}
+        % end
+        <br/><br/>
+        % if not is_revision and USER and USER['name'] == recipe['user']:
+        {{!referrer_csrf_link('/recipe/abandon/{}'.format(recipe['pkgname']), _('Abandon recipe'))}}
+        % elif not is_revision and USER and not recipe['user']:
+        {{!referrer_csrf_link('/recipe/adopt/{}'.format(recipe['pkgname']), _('Adopt recipe'))}}
+        % end
+        % if USER and (USER['level'] >= LEVELS['moderator'] or (is_revision and USER['name'] == recipe['user'])):
+        {{!referrer_csrf_link('/recipe/delete/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Delete recipe'))}}
         % end
     </div>
     <article id='recipebox'>
@@ -34,8 +49,10 @@
         <div class='col_25'>{{', '.join(recipe['license'])}}</div>
         <div class='clearfix'></div>
         % if not is_revision:
+        % if recipe['maintainer']:
         <div class='col_25'><strong>{{_('Maintainer')}}:</strong></div>
         <div class='col_25'>{{!link('/user/{}/recipes'.format(recipe['maintainer']), recipe['maintainer'])}}</div>
+        % end
         % if recipe['contributors']:
             <div class='clearfix'></div>
             <div class='col_25'><strong>{{_('Contributors')}}:</strong></div>
@@ -136,10 +153,12 @@ $.get("{{recipe['recipepath']}}?syntax=1", function(data) {
 </section>
 % end
 
+% if comments:
 <section class='box'>
     % for comment in comments:
     % include('comment', pkgname=recipe['pkgname'], revision=recipe['revision'], comment_id=comment['id'], comment_user=comment['user'], comment=comment['comment'], comment_date=comment['date'], is_revision=is_revision)
     % end
 </section>
+% end
 
 % # vim: set ts=8 sw=4 tw=0 ft=html :

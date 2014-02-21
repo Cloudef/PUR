@@ -68,7 +68,7 @@ class Sqlite3Recipe(object):
         if not data:
             raise Exception('No such recipe')
         data['revisions'] = [x for x in data['revisions'] if x['revision'] != revision]
-        self.set_recipe(recipe, None, data)
+        self.set_recipe(recipe, data)
 
     def remove_revisions(self, query, delete_comments=True, delete_dir=True):
         '''remove revisions using query'''
@@ -132,7 +132,7 @@ class Sqlite3Recipe(object):
             parent['revisions'].append(revdic)
         else:
             parent['revisions'] = [revdic]
-        self.set_recipe(recipe, None, parent)
+        self.set_recipe(recipe, parent)
 
     def accept_revision(self, recipe, revision):
         '''accept revision of recipe'''
@@ -160,7 +160,7 @@ class Sqlite3Recipe(object):
         else:
             parent['contributors'] = [revision['user']]
 
-        self.set_recipe(recipe, None, parent)
+        self.set_recipe(recipe, parent)
 
     def create_recipe(self, user, revision, data):
         '''insert recipe in database'''
@@ -200,12 +200,21 @@ class Sqlite3Recipe(object):
             self.recipe_add_revision(parent['pkgname'], data)
         return data
 
-    def set_recipe(self, recipe, revision, data):
+    def set_maintainer(self, recipe, maintainer):
+        '''set maintainer for recipe'''
+        query = Sqlite3Query('WHERE pkgname = ?', (recipe,))
+        self.recipes.set({'maintainer': maintainer, 'user': maintainer}, query)
+        self.revisions.set({'maintainer': maintainer}, query)
+
+    def set_recipe(self, recipe, data):
         '''set recipe data in database'''
         query = Sqlite3Query('WHERE pkgname = ?', (recipe,))
-        if revision:
-            query.append('and revision = ?', (revision,))
         return self.recipes.set(data, query)
+
+    def set_revision(self, recipe, revision, data):
+        '''set recipe revision data in database'''
+        query = Sqlite3Query('WHERE pkgname = ? and revision = ?', (recipe, revision))
+        return self.revisions.set(data, query)
 
     def get_recipe_count(self):
         '''get number of recipes from database'''

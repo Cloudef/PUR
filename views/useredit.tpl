@@ -2,7 +2,13 @@
 
 <section class='box'>
     <header>
-        <h2>{{_('My Account')}}</h2>
+        <h2>
+            {{_('My Account')}}
+            % titles = {LEVELS['moderator']: 'moderator', LEVELS['admin']: 'admin'}
+            % if USER['level'] in titles:
+            ({{titles[USER['level']]}})
+            % end
+        </h2>
     </header>
     <article>
         <form action='/user/{{USER['name']}}/edit'>

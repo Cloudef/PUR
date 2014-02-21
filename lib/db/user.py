@@ -21,7 +21,7 @@ class Sqlite3User(object):
         super(Sqlite3User, self).__init__(*args, **kwargs)
         self.database = db_file
         serialize = ['sessions']
-        columns = ['name', 'password', 'salt', 'session', 'sessions', 'email']
+        columns = ['name', 'password', 'salt', 'session', 'sessions', 'email', 'level']
         self.users = Sqlite3Table('users', columns, serialize, db_file)
 
     def test_password(self, username, password):
@@ -38,18 +38,23 @@ class Sqlite3User(object):
 
     def get_user(self, user, session=None, pass_csrf=None, email=None):
         '''get, update or create user in database'''
+        # pylint: disable=too-many-branches
         save = False
         query = Sqlite3Query('WHERE name = ?', (user,))
         data = self.users.get_one(query)
         if not data:
             if session and pass_csrf:
-                self.users.insert({'name': user, 'session': session})
+                self.users.insert({'name': user, 'session': session, 'level': 0})
                 data = self.users.get_one(query)
                 if not data:
                     raise IOError('Failed to insert user')
                 save = True
             else:
                 return None
+
+        if data['level'] is None:
+            data['level'] = 0
+            save = True
 
         if session and session != data['session']:
             data['session'] = session
