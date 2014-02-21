@@ -55,9 +55,12 @@ def set_language(lang):
         _ = lambda x: x
     else:
         import gettext
-        locale = gettext.translation('messages', 'locale', [lang])
-        if locale:
-            _ = locale.gettext
+        try:
+            locale = gettext.translation('messages', 'locale', [lang])
+            if locale:
+                _ = locale.gettext
+        except IOError:
+            _ = lambda x: x
 
     # translate site navigation links
     navsites = []
