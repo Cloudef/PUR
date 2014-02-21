@@ -569,7 +569,6 @@ def post_upload():
     if data and not name:
         name = data.filename
 
-
     class SaveJSONFailure(Exception):
         '''Exception raised when saving uploaded file failed'''
         def __init__(self, message, httpcode):
