@@ -482,7 +482,7 @@ def register():
 def change_language(lang=None):
     '''change language'''
     if lang not in TRANSLATIONS:
-        return index_page(_('Language not found'), _('Unfortunately we do not have translation for {} locale').format(lang))
+        abort(404, _('Unfortunately we do not have translation for {} locale').format(lang))
     SESSION['lang'] = lang
     SESSIONMANAGER.save(SESSION)
     if is_json_request():
