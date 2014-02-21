@@ -1,0 +1,10 @@
+@import url('dark.css');
+
+.container {
+    background:url('/images/moe') no-repeat scroll 30px bottom #121212;
+}
+.box {
+    background-color:#121212;
+}
+
+/* vim: set ts=8 sw=4 tw=0 ft=css :*/
