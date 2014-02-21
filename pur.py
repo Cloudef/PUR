@@ -266,13 +266,49 @@ def recipe_page(pkgname=None):
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
 def delete_recipe_revision(pkgname=None, revision=None):
-    '''delete comment from recipe revision'''
+    '''delete recipe revision'''
     recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
     if not recipe:
         abort(400, _('recipe and revision must exist'))
     if not USER or USER['name'] != recipe['user']:
         abort(403)
     RECIPEMANAGER.remove_recipe(pkgname, recipe['revision'], remove_revisions=True, remove_comments=True)
+    if is_json_request():
+        return status_json_ok()
+    if revision:
+        return redirect('/recipe/{}'.format(pkgname))
+    return redirect('/user/{}/recipes'.format(USER['name']))
+
+@route('/recipe/reject/<pkgname>/<revision>', ['POST'])
+@session.valid_session(SESSIONMANAGER, not_valid_session_cb)
+@session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
+def reject_recipe_revision(pkgname=None, revision=None):
+    '''reject recipe revision'''
+    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    if not recipe or not recipe.get('parent'):
+        abort(400, _('recipe and revision must exist'))
+    if not USER or USER['name'] != recipe['maintainer']:
+        abort(403)
+    RECIPEMANAGER.remove_recipe(pkgname, recipe['revision'], remove_revisions=True, remove_comments=True)
+    if is_json_request():
+        return status_json_ok()
+    if revision:
+        return redirect('/recipe/{}'.format(pkgname))
+    return redirect('/user/{}/recipes'.format(USER['name']))
+
+@route('/recipe/accept/<pkgname>/<revision>', ['POST'])
+@session.valid_session(SESSIONMANAGER, not_valid_session_cb)
+@session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
+def accept_recipe_revision(pkgname=None, revision=None):
+    '''reject recipe revision'''
+    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    if not recipe or not recipe.get('parent'):
+        abort(400, _('recipe and revision must exist'))
+    if not USER or USER['name'] != recipe['maintainer']:
+        abort(403)
+    RECIPEMANAGER.accept_revision(pkgname, revision)
+    if is_json_request():
+        return status_json_ok()
     if revision:
         return redirect('/recipe/{}'.format(pkgname))
     return redirect('/user/{}/recipes'.format(USER['name']))
@@ -280,11 +316,12 @@ def delete_recipe_revision(pkgname=None, revision=None):
 @route('/user/<user>/recipes')
 def user_recipes(user=None):
     '''user recipes page'''
-    recipes = RECIPEMANAGER.get_recipes(user)
-    revisions = RECIPEMANAGER.get_revisions(user)
+    recipes = RECIPEMANAGER.get_recipes(user=user)
+    revisions = RECIPEMANAGER.get_revisions(user=user)
+    contribs = RECIPEMANAGER.get_recipes(contrib=user)
     if is_json_request():
-        return dump_json({'recipes': recipes, 'revisions': revisions})
-    return template('recipes', user=user, recipes=recipes, revisions=revisions)
+        return dump_json({'recipes': recipes, 'revisions': revisions, 'contributions': contribs})
+    return template('recipes', user=user, recipes=recipes, revisions=revisions, contributions=contribs)
 
 @route('/comment/<pkgname>/<revision>', ['POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)

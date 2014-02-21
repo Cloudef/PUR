@@ -32,4 +32,15 @@
 </section>
 % end
 
+% if user and contributions:
+<section class='box'>
+    <header>
+        <h2>{{_('Contributions by')}} {{user}}</h2>
+    </header>
+    <article>
+    % include('recipes_table.tpl', recipes=contributions)
+    </article>
+</section>
+% end
+
 % # vim: set ts=8 sw=4 tw=0 ft=html :

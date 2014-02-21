@@ -14,6 +14,10 @@
         <h3>Recipe Actions</h3>
         {{!link(recipe['recipepath'], _('View PNDBUILD'))}}
         {{!link(recipe['tarpath'], _('Download tarball'))}}
+        % if is_revision and USER and USER['name'] == recipe['maintainer']:
+        {{!referrer_csrf_link('/recipe/accept/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Accept revision'))}}
+        {{!referrer_csrf_link('/recipe/reject/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Reject revision'))}}
+        % end
     </div>
     <article id='recipebox'>
         <p>
@@ -32,6 +36,17 @@
         % if not is_revision:
         <div class='col_25'><strong>{{_('Maintainer')}}:</strong></div>
         <div class='col_25'>{{!link('/user/{}/recipes'.format(recipe['maintainer']), recipe['maintainer'])}}</div>
+        % if recipe['contributors']:
+            <div class='clearfix'></div>
+            <div class='col_25'><strong>{{_('Contributors')}}:</strong></div>
+            <div class='col_25'>
+            % links = []
+            % for ctrb in recipe['contributors']:
+            % links.append(link('/user/{}/recipes'.format(ctrb), ctrb))
+            % end
+            {{!', '.join(links)}}
+            </div>
+        % end
         % else:
         <div class='col_25'><strong>{{_('Contributor')}}:</strong></div>
         <div class='col_25'>{{!link('/user/{}/recipes'.format(recipe['user']), recipe['user'])}}</div>
@@ -110,7 +125,7 @@ $.get("{{recipe['recipepath']}}?syntax=1", function(data) {
 % if not is_revision and recipe['revisions']:
 <section class='box'>
     % for revision in recipe['revisions']:
-    % include('revision', pkgname=recipe['pkgname'], revision=revision['revision'], datemodify=revision['datemodify'], revision_user=revision['user'])
+    % include('revision', pkgname=recipe['pkgname'], maintainer=recipe['maintainer'], revision=revision['revision'], datemodify=revision['datemodify'], revision_user=revision['user'])
     % end
 </section>
 % end

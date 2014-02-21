@@ -30,16 +30,19 @@ class Sqlite3Recipe(object):
     def __init__(self, db_file='userdata/db/recipes.db', *args, **kwargs):
         super(Sqlite3Recipe, self).__init__(*args, **kwargs)
         self.database = db_file
-        self.recipe_copy_over = ['revisions', 'revision']
+        self.recipe_copy_over = ['contributors', 'revisions', 'revision']
         self.revision_copy_over = ['revision']
+        self.accept_copy_over = ['revision', 'directory', 'datemodify',
+                'pkgname', 'pndcategory', 'pkgver', 'pkgrel', 'pkgdesc', 'url', 'license', 'depend',
+                'makedepend', 'pndexec', 'source']
 
         shared_serialize = ['license', 'depend', 'makedepend', 'pndexec', 'source']
         shared_columns = ['maintainer', 'user', 'revision', 'directory', 'datemodify',
                           'pkgname', 'pndcategory', 'pkgver', 'pkgrel', 'pkgdesc', 'url', 'license', 'depend',
                           'makedepend', 'pndexec', 'source']
 
-        columns = ['revisions'] + shared_columns
-        serialize = ['revisions'] + shared_serialize
+        columns = ['contributors', 'revisions'] + shared_columns
+        serialize = ['contributors', 'revisions'] + shared_serialize
         self.recipes = Sqlite3Table('recipes', columns, serialize, self.database)
 
         columns = ['parent'] + shared_columns
@@ -67,14 +70,17 @@ class Sqlite3Recipe(object):
         data['revisions'] = [x for x in data['revisions'] if x['revision'] != revision]
         self.set_recipe(recipe, None, data)
 
-    def remove_revisions(self, query):
+    def remove_revisions(self, query, delete_comments=True, delete_dir=True):
         '''remove revisions using query'''
         revisions = self.revisions.get(query)
         self.revisions.delete(query)
-        self.comments.delete(query)
         for rev in revisions:
             rev = _populate_recipe_dynamic_values(rev)
-            _delete_recipedir(rev['recipedir'])
+            if delete_comments:
+                query = Sqlite3Query('WHERE pkgname = ? and revision = ?', (rev['pkgname'], rev['revision']))
+                self.comments.delete(query)
+            if delete_dir:
+                _delete_recipedir(rev['recipedir'])
             self.remove_revision_from_parent(rev['pkgname'], rev['revision'])
 
     def remove_recipe(self, recipe, revision=None, remove_revisions=False, remove_comments=False):
@@ -87,12 +93,16 @@ class Sqlite3Recipe(object):
         if data.get('parent'):
             self.remove_revision_from_parent(data['pkgname'], data['revision'])
         elif remove_revisions:
-            self.remove_revisions(query)
+            rev_query = Sqlite3Query('WHERE pkgname = ?', (data['pkgname'],))
+            self.remove_revisions(rev_query)
 
         if remove_comments:
             self.comments.delete(query)
 
-        self.recipes.delete(query)
+        if data.get('parent'):
+            self.revisions.delete(query)
+        else:
+            self.recipes.delete(query)
         _delete_recipedir(data['recipedir'])
 
     def remove_comment(self, recipe, revision, cid):
@@ -118,10 +128,38 @@ class Sqlite3Recipe(object):
         if not parent:
             raise Exception('No such recipe')
         revdic = {'revision': data['revision'], 'datemodify': data['datemodify'], 'user': data['user']}
-        if parent['revisions']:
+        if parent['revisions'] and revdic not in parent['revisions']:
             parent['revisions'].append(revdic)
         else:
             parent['revisions'] = [revdic]
+        self.set_recipe(recipe, None, parent)
+
+    def accept_revision(self, recipe, revision):
+        '''accept revision of recipe'''
+        revision = self.get_recipe(recipe, revision)
+        if not revision or not revision.get('parent'):
+            raise Exception('no such revision')
+        parent = self.get_recipe(recipe, revision['parent'])
+        if not parent:
+            raise Exception('parent was not found')
+
+        _delete_recipedir(parent['recipedir'])
+
+        query = Sqlite3Query('WHERE pkgname = ? and revision = ?', (parent['pkgname'], parent['revision']))
+        self.comments.set({'revision':revision['revision']}, query)
+
+        query = Sqlite3Query('WHERE pkgname = ?', (parent['pkgname'],))
+        self.remove_revisions(query, delete_comments=False, delete_dir=False)
+
+        for key in self.accept_copy_over:
+            parent[key] = revision[key]
+        parent['revisions'] = None
+
+        if parent['contributors'] and revision['user'] not in parent['contributors']:
+            parent['contributors'].append(revision['user'])
+        else:
+            parent['contributors'] = [revision['user']]
+
         self.set_recipe(recipe, None, parent)
 
     def create_recipe(self, user, revision, data):
@@ -188,11 +226,13 @@ class Sqlite3Recipe(object):
         query = Sqlite3Query('WHERE pkgname = ? AND revision = ? and id = ?', (recipe, revision, cid))
         return self.comments.get_one(query)
 
-    def get_recipes(self, user=None, limit=None):
+    def get_recipes(self, user=None, contrib=None, limit=None):
         '''get recipes from database'''
         query = Sqlite3Query()
         if user:
             query.append_with_clause('WHERE', 'user = ?', (user,))
+        if contrib:
+            query.append_with_clause('WHERE', 'contributors MATCH ?', ("'{}'".format(contrib),))
         query.append('ORDER BY pkgname')
         if limit:
             query.append('LIMIT ?', (limit,))
@@ -211,14 +251,14 @@ class Sqlite3Recipe(object):
         query = Sqlite3Query('WHERE pkgname = ?', (recipe,))
         if revision:
             query.append('and revision = ?', (revision,))
-        query.append('ORDER BY date DESC')
+        query.append('ORDER BY id DESC')
         if limit:
             query.append('LIMIT ?', (limit,))
         return self.comments.get(query)
 
     def search_recipes(self, query):
         '''search recipes from database'''
-        query = Sqlite3Query('WHERE pkgname MATCH ?', (query,))
+        query = Sqlite3Query('WHERE pkgname MATCH ? or pkgdesc MATCH ?', (query, query))
         query.append('ORDER BY pkgname')
         return self.recipes.get(query, _populate_recipe_dynamic_values)
 

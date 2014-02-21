@@ -58,7 +58,14 @@ def _dict_factory(cur, row):
 
 def _match_pattern(subvalue, value):
     '''MATCH override'''
-    return subvalue in value
+    subvalue = subvalue.lower()
+    value = value.lower()
+    if subvalue in value:
+        return True
+    for split in subvalue.split():
+        if split in value:
+            return True
+    return False
 
 class Sqlite3Table(object):
     '''

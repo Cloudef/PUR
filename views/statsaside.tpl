@@ -1,5 +1,6 @@
 <!-- statistics at right side of page -->
 <aside class='content-right'>
+    % if recipes:
     <section class='box recent clearfix'>
         <h3>Recent Updates</h3>
         % for recipe in recipes:
@@ -12,6 +13,7 @@
         <div class='clearfix'></div>
         % end
     </section>
+    % end
     <section class='box statistics clearfix'>
         <h3>Statistics</h3>
         <div class='col_75'>{{_('Recipes')}}</div>
