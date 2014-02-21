@@ -183,6 +183,11 @@ class Sqlite3Recipe(object):
             data = self.recipes.get_one(query.set('WHERE pkgname = ?', (recipe,)))
         return _populate_recipe_dynamic_values(data) if data else None
 
+    def get_comment(self, recipe, revision, cid):
+        '''get comment from recipe'''
+        query = Sqlite3Query('WHERE pkgname = ? AND revision = ? and id = ?', (recipe, revision, cid))
+        return self.comments.get_one(query)
+
     def get_recipes(self, user=None, limit=None):
         '''get recipes from database'''
         query = Sqlite3Query()

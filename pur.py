@@ -270,6 +270,8 @@ def delete_recipe_revision(pkgname=None, revision=None):
     recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
     if not recipe:
         abort(400, _('recipe and revision must exist'))
+    if not USER or USER['name'] != recipe['user']:
+        abort(403)
     RECIPEMANAGER.remove_recipe(pkgname, recipe['revision'], remove_revisions=True, remove_comments=True)
     if revision:
         return redirect('/recipe/{}'.format(pkgname))
@@ -315,6 +317,11 @@ def delete_comment_from_revision(pkgname=None, revision=None, cid=None):
     recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
     if not recipe:
         abort(400, _('recipe and revision must exist'))
+    comment = RECIPEMANAGER.get_comment(pkgname, recipe['revision'], cid)
+    if not comment:
+        abort(400, _('comment must exist'))
+    if not USER or USER['name'] != comment['user']:
+        abort(403)
     RECIPEMANAGER.remove_comment(pkgname, recipe['revision'], cid)
     if revision:
         return redirect('/recipe/{}/{}'.format(pkgname, revision))
@@ -349,7 +356,12 @@ def user_account(user=None):
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
 def revoke(sessionid=None):
-    '''reovke session'''
+    '''revoke session'''
+    revoke_session = SESSIONMANAGER.load(sessionid)
+    if not revoke_session:
+        abort(400, _('revoked session must exist'))
+    if revoke_session['name'] != USER['name']:
+        abort(403)
     USER['sessions'].remove(sessionid)
     SESSIONMANAGER.remove(sessionid)
     USERMANAGER.set_user(USER['name'], USER)
