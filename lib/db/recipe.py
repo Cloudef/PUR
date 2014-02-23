@@ -166,6 +166,7 @@ class Sqlite3Recipe(object):
         '''insert recipe in database'''
         import time
         data['user'] = user
+        data['contributors'] = [user]
         data['revision'] = revision
         data['directory'] = revision
         data['datemodify'] = time.strftime("%Y-%m-%d %H:%M", time.strptime(revision, "%Y%m%d%H%M%S"))
@@ -241,7 +242,7 @@ class Sqlite3Recipe(object):
         if user:
             query.append_with_clause('WHERE', 'user = ?', (user,))
         if contrib:
-            query.append_with_clause('WHERE', 'contributors MATCH ?', ("'{}'".format(contrib),))
+            query.append_with_clause('WHERE', 'user != ? and contributors MATCH ?', (contrib, "'{}'".format(contrib)))
         query.append('ORDER BY pkgname')
         if limit:
             query.append('LIMIT ?', (limit,))
