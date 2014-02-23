@@ -25,7 +25,7 @@ TRANSLATIONS = ['en', 'fi']
 VERSION = 'v1.0.0'
 STYLES = ['moe', 'light', 'dark']
 LEVELS = {'user': 0, 'contributor': 1, 'moderator': 98, 'admin': 99}
-OPT = {'style': 'dark'}
+OPT = {'style': 'dark', 'server': 'auto', 'port': 9002}
 BETA = True
 
 # session managment
@@ -44,6 +44,16 @@ MLURLTABLE = {'PNDPS': '/standards'}
 
 # regex
 PKGNAMEREX = re.compile("^[a-z0-9@._+-]*$")
+
+try:
+    # pylint: disable=import-error
+    import config
+    if 'server' in config.__dict__:
+        OPT['server'] = config.server
+    if 'port' in config.__dict__:
+        OPT['port'] = config.port
+except ImportError as exc:
+    print("Configuration module was not loaded!")
 
 # setup gettext
 _ = None
@@ -818,31 +828,38 @@ def before_request():
     BaseTemplate.defaults['PURSTYLE'] = '{}.css'.format(style)
     BaseTemplate.defaults['USER'] = USER
 
-# set template globals
-BaseTemplate.defaults['PURVERSION'] = VERSION
-BaseTemplate.defaults['PURSTYLES'] = STYLES
-BaseTemplate.defaults['PURTRANSLATIONS'] = TRANSLATIONS
-BaseTemplate.defaults['PURBETA'] = BETA
-BaseTemplate.defaults['LEVELS'] = LEVELS
+def main():
+    '''main method'''
+    # set template globals
+    BaseTemplate.defaults['PURVERSION'] = VERSION
+    BaseTemplate.defaults['PURSTYLES'] = STYLES
+    BaseTemplate.defaults['PURTRANSLATIONS'] = TRANSLATIONS
+    BaseTemplate.defaults['PURBETA'] = BETA
+    BaseTemplate.defaults['LEVELS'] = LEVELS
 
-# template functions
-CSRF_INPUT = lambda: '<input type="hidden" name="CSRF" value="{}"/>'.format(SESSION['CSRF'])
-REFERRER_INPUT = lambda: '<input type="hidden" name="REFERRER" value="{}"/>'.format(request.path)
-BaseTemplate.defaults['CL'] = comment_markup
-BaseTemplate.defaults['ML'] = markup
-BaseTemplate.defaults['_ML'] = lambda x: markup(_(x))
-BaseTemplate.defaults['get_session'] = SESSIONMANAGER.get_session
-BaseTemplate.defaults['js_togglable'] = js_togglable
-BaseTemplate.defaults['linkify'] = replace.html_linkify_and_escape
-BaseTemplate.defaults['link'] = replace.html_link
-BaseTemplate.defaults['csrf_input'] = CSRF_INPUT
-BaseTemplate.defaults['referrer_input'] = REFERRER_INPUT
-BaseTemplate.defaults['csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/>{}</form>'.format(x, x if not y else y, CSRF_INPUT())
-BaseTemplate.defaults['referrer_csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/>{}{}</form>'.format(x, x if not y else y, CSRF_INPUT(), REFERRER_INPUT())
-BaseTemplate.defaults['diff'] = lambda x: replace.syntax(x, 'diff')
+    # template functions
+    csrf_input = lambda: '<input type="hidden" name="CSRF" value="{}"/>'.format(SESSION['CSRF'])
+    referrer_input = lambda: '<input type="hidden" name="REFERRER" value="{}"/>'.format(request.path)
+    BaseTemplate.defaults['CL'] = comment_markup
+    BaseTemplate.defaults['ML'] = markup
+    BaseTemplate.defaults['_ML'] = lambda x: markup(_(x))
+    BaseTemplate.defaults['get_session'] = SESSIONMANAGER.get_session
+    BaseTemplate.defaults['js_togglable'] = js_togglable
+    BaseTemplate.defaults['linkify'] = replace.html_linkify_and_escape
+    BaseTemplate.defaults['link'] = replace.html_link
+    BaseTemplate.defaults['csrf_input'] = csrf_input
+    BaseTemplate.defaults['referrer_input'] = referrer_input
+    BaseTemplate.defaults['csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/>{}</form>'.format(x, x if not y else y, csrf_input())
+    BaseTemplate.defaults['referrer_csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/>{}{}</form>'.format(x, x if not y else y, csrf_input(), referrer_input())
+    BaseTemplate.defaults['diff'] = lambda x: replace.syntax(x, 'diff')
 
-# run
-bottle.debug(True)
-bottle.run(host='0.0.0.0', port=9002)
+    # run
+    bottle.debug(True)
+    bottle.run(server=OPT['server'], host='0.0.0.0', port=OPT['port'])
+
+if __name__ == "__main__":
+    main()
+else:
+    raise Exception('Should not be used as module')
 
 #  vim: set ts=8 sw=4 tw=0 ft=python :
