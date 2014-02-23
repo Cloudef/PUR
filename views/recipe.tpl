@@ -24,10 +24,11 @@
         {{!referrer_csrf_link('/recipe/accept/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Accept revision'))}}
         {{!referrer_csrf_link('/recipe/reject/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Reject revision'))}}
         % end
-        <br/><br/>
         % if not is_revision and USER and USER['name'] == recipe['user']:
+        <br/><br/>
         {{!referrer_csrf_link('/recipe/abandon/{}'.format(recipe['pkgname']), _('Abandon recipe'))}}
         % elif not is_revision and USER and not recipe['user']:
+        <br/><br/>
         {{!referrer_csrf_link('/recipe/adopt/{}'.format(recipe['pkgname']), _('Adopt recipe'))}}
         % end
         % if USER and (USER['level'] >= LEVELS['moderator'] or (is_revision and USER['name'] == recipe['user'])):
@@ -54,15 +55,21 @@
         <div class='col_25'>{{!link('/user/{}/recipes'.format(recipe['maintainer']), recipe['maintainer'])}}</div>
         % end
         % if recipe['contributors']:
+            <%
+            links = []
+            for ctrb in recipe['contributors']:
+                if ctrb != recipe['maintainer']:
+                    links.append(link('/user/{}/recipes'.format(ctrb), ctrb))
+                end
+            end
+            %>
+            % if links:
             <div class='clearfix'></div>
             <div class='col_25'><strong>{{_('Contributors')}}:</strong></div>
             <div class='col_25'>
-            % links = []
-            % for ctrb in recipe['contributors']:
-            % links.append(link('/user/{}/recipes'.format(ctrb), ctrb))
-            % end
             {{!', '.join(links)}}
             </div>
+            % end
         % end
         % else:
         <div class='col_25'><strong>{{_('Contributor')}}:</strong></div>
