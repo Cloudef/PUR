@@ -51,7 +51,7 @@ table th {
     text-align:left;
 }
 
-table, form {
+form {
     margin:0.4em 0;
 }
 
@@ -183,6 +183,10 @@ button.toggle {
 .box {
     padding:0 1em 0em 1em;
     margin:1em 0 1em 0;
+}
+
+.recipes {
+    padding:0;
 }
 
 .box.actions {

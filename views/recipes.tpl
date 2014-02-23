@@ -1,6 +1,6 @@
 % rebase('html_base.tpl', title=_('PUR - Recipes'))
 
-<section class='box'>
+<section class='{{"recipes" if not user else ""}} box'>
     % if user:
     <header>
         <h2>{{_('Recipes by')}} {{user}}</h2>
