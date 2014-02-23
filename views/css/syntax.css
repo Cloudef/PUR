@@ -1,7 +1,8 @@
-.pygments { background-color: #111; color:#CACACA; font-family: monospace; font-size:12px; line-height:1.1; }
+.pygments { background-color: #111; color:#CACACA; font-family: monospace; font-size: 12px; line-height: 1.1; overflow: auto; }
 .comment .pygments, .revision .pygments { overflow: auto; max-height: 300px; }
 .pygments table { margin:0; background-color: #111 }
-.linenos { color: #222; width: 10px; white-space: nowrap; padding-right:5px; }
+.pygments, .pygments div, .pygments span, .pygments td { white-space: nowrap; }
+.linenos { color: #222; width: 10px; padding-right:5px; }
 .highlight .hll { background-color: #ffffcc }
 .highlight .c { color: #66AABB; font-style: italic } /* Comment */
 .highlight .err { border: 1px solid #FF0000 } /* Error */
