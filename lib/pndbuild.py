@@ -9,8 +9,11 @@ class PNDBUILDException(Exception):
 def _find_bash():
     '''find system bash path'''
     bash = None
-    search = ['/bin/bash', '/usr/bin/bash']
-    for exe in search:
+    dirs = [dre or "." for dre in os.environ.get("PATH", "").split(":")]
+    if not dirs:
+        dirs = ['/bin', '/usr/bin']
+    for dre in dirs:
+        exe = os.path.join(dre, 'bash')
         if os.path.exists(exe):
             bash = exe
             break
