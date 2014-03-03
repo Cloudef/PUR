@@ -20,10 +20,10 @@
         <div class='col_25'>{{num_recipes}}</div>
         <div class='clearfix'></div>
         <div class='col_75'>{{_('Contributors')}}</div>
-        <div class='col_25'>{{num_users}}</div>
+        <div class='col_25'>{{num_contributors}}</div>
         <div class='clearfix'></div>
         <div class='col_75'>{{_('Moderators')}}</div>
-        <div class='col_25'>{{num_users}}</div>
+        <div class='col_25'>{{num_moderators}}</div>
         <div class='clearfix'></div>
         <div class='col_75'>{{_('Registered users')}}</div>
         <div class='col_25'>{{num_users}}</div>

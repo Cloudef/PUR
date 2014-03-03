@@ -76,6 +76,7 @@ class Sqlite3User(object):
 
         if email and data['email'] != email:
             data['email'] = email
+            save = True
 
         if save:
             self.set_user(user, data)
@@ -85,8 +86,12 @@ class Sqlite3User(object):
         '''get number of users from database'''
         return self.users.count
 
-    def search_users(self, query):
-        '''search users from database'''
-        return self.users.get(Sqlite3Query('WHERE name MATCH ?', (query,)))
+    def query_users(self, fmt, args=None):
+        '''query users from database'''
+        return self.users.get(Sqlite3Query(fmt, args))
+
+    def query_users_count(self, fmt, args=None):
+        '''get count for query'''
+        return self.users.qcount(Sqlite3Query(fmt, args))
 
 #  vim: set ts=8 sw=4 tw=0 :

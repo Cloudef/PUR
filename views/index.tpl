@@ -11,7 +11,7 @@
             % else:
             <p>{{_('Welcome to the PUR!')}}</p>
             <p>{{!_ML('Contributed PNDBUILDs __must__ conform to the [PNDPS:PND Packaging Standards] otherwise they will be deleted!')}}</p>
-            %end
+            % end
         </article>
     </section>
 </div>

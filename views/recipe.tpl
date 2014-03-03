@@ -24,15 +24,25 @@
         {{!referrer_csrf_link('/recipe/accept/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Accept revision'))}}
         {{!referrer_csrf_link('/recipe/reject/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Reject revision'))}}
         % end
+        % hasbr = False
         % if not is_revision and USER and USER['name'] == recipe['user']:
         <br/><br/>
+        % hasbr = True
         {{!referrer_csrf_link('/recipe/abandon/{}'.format(recipe['pkgname']), _('Abandon recipe'))}}
         % elif not is_revision and USER and not recipe['user']:
         <br/><br/>
+        % hasbr = True
         {{!referrer_csrf_link('/recipe/adopt/{}'.format(recipe['pkgname']), _('Adopt recipe'))}}
         % end
         % if USER and (USER['level'] >= LEVELS['moderator'] or (is_revision and USER['name'] == recipe['user'])):
-        {{!referrer_csrf_link('/recipe/delete/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Delete recipe'))}}
+        % if not hasbr:
+        <br/><br/>
+        % end
+        % if is_revision:
+           {{!referrer_csrf_link('/recipe/delete/{}/{}'.format(recipe['pkgname'], recipe['revision']), _('Delete recipe'))}}
+        % else:
+           {{!referrer_csrf_link('/recipe/delete/{}'.format(recipe['pkgname']), _('Delete recipe'))}}
+        % end
         % end
     </div>
     <article id='recipebox'>
@@ -130,9 +140,15 @@
         <div class='clearfix'></div>
         % end
         </p>
+        % if is_revision:
+        % diffstr = recipe['diff'] if recipe['diff'] else ''
+        % diffstr = '{}\n{}'.format(recipe['changes'], diffstr)
+        <p>{{!js_togglable('<h3 style="display:inline;">Diff</h3>', diff(diffstr))}}</p>
+        % end
     </article>
 </section>
 
+% if not is_revision:
 <script>
 $.get("{{recipe['recipepath']}}?syntax=1", function(data) {
     $('#recipebox').append('<p class="js_togglable"> \
@@ -145,11 +161,12 @@ $.get("{{recipe['recipepath']}}?syntax=1", function(data) {
     togglable_elements($('#toggle_pndbuild'));
 });
 </script>
+% end
 
 % if not is_revision and recipe['revisions']:
 <section class='box'>
     % for revision in recipe['revisions']:
-    % include('revision', pkgname=recipe['pkgname'], maintainer=recipe['maintainer'], revision=revision['revision'], datemodify=revision['datemodify'], revision_user=revision['user'])
+    % include('revision', pkgname=recipe['pkgname'], maintainer=recipe['maintainer'], revision=revision['revision'], datemodify=revision['datemodify'], revision_user=revision['user'], revision_changes=revision['changes'], revision_diff=revision['diff'])
     % end
 </section>
 % end

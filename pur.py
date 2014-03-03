@@ -2,10 +2,6 @@
 # pylint: disable=line-too-long
 '''PND user repository'''
 
-# TODO:
-# cache processed comments for recipes
-# cache processed diffs for recipes
-
 import os, re
 import lib.bottle as bottle
 import lib.session as session
@@ -21,7 +17,7 @@ from lib.bottle import BaseTemplate, template, static_file
 
 # settings
 ACCEPT = ['text/html', 'application/json']
-TRANSLATIONS = ['en', 'fi']
+TRANSLATIONS = ['en']
 VERSION = 'v1.0.0'
 STYLES = ['moe', 'light', 'dark']
 LEVELS = {'user': 0, 'contributor': 1, 'moderator': 98, 'admin': 99}
@@ -129,10 +125,18 @@ def replace_togglable_code(expr, start, end, data):
     header = '{} {}'.format(lang, _('code')) if lang else _('Code')
     return replace.replace_range(data, start, end, '</pre>{}<pre>'.format(js_togglable(header, replace.syntax(code, lang), hidden=True)))
 
+def replace_recipe(expr, start, end, data):
+    '''replace recipe block found by iter_callback'''
+    recipe = expr.group(1)
+    if RECIPEMANAGER.get_recipe(recipe):
+        return replace.replace_range(data, start, end, replace.html_link('/recipe/{}'.format(recipe), recipe))
+    return data
+
 def comment_markup(data, escape=True):
     '''parse comment markup'''
     if escape:
         data = replace.html_escape(data)
+    data = replace.iter_replace(r'\[([^\]]+)\]', data, replace_recipe)
     data = replace.iter_replace_compiled(replace.LINKREX, data, replace.replace_link)
     data = replace.iter_replace(r'```([^\n]+)\n([^`]+)\n```', data, replace_togglable_code, re.M)
     data = replace.iter_replace(r'```([^`]+)```', data, replace.replace_block, re.M)
@@ -198,6 +202,41 @@ def lastpage():
         referrer = request.query['REFERRER']
     return referrer
 
+def md5sum(path, block_size=2**20):
+    '''get md5sum for file'''
+    import hashlib
+    md5 = hashlib.md5()
+    with open(path, 'rb') as fle:
+        while True:
+            data = fle.read(block_size)
+            if not data:
+                break
+            md5.update(data)
+    return md5.hexdigest()
+
+def search(fun, cfun, fmt=None, args=None):
+    '''search database'''
+    fmt = '' if not fmt else fmt
+
+    if request.query.get('p'):
+        page, column, order = request.query['p'].split(',')
+        page = int(page)
+    else:
+        page = 1
+        column = 'pkgname'
+        order = 'desc'
+
+    if column not in ['pkgname', 'pndcategory', 'maintainer']:
+        column = 'pkgname'
+    if order not in ['desc', 'asc']:
+        order = 'desc'
+
+    results = fun('{} ORDER BY {} {} LIMIT {}, 100'.format(fmt, column, order, page - 1), args)
+    matches = cfun(fmt, args)
+    pages = round(matches / 100) if matches > 100 else 1
+    options = '{},{},{}'.format(page, column, order)
+    return (results, matches, pages, options)
+
 def not_valid_csrf_cb():
     '''callback for csrf_check'''
     bottle.abort(403, _('wrong CSRF token supplied'))
@@ -213,24 +252,36 @@ def index_page(header=None, content=None):
     '''main page with information'''
     if is_json_request():
         return dump_json({'CSRF': SESSION['CSRF']})
-    recipes = RECIPEMANAGER.get_recipes(limit=10)
+    recipes = RECIPEMANAGER.query_recipes('ORDER BY datemodify LIMIT 10')
     num_recipes = RECIPEMANAGER.get_recipe_count()
     num_users = USERMANAGER.get_user_count()
-    return template('index', header=header, content=content, recipes=recipes, num_recipes=num_recipes, num_users=num_users)
+    num_contributors = USERMANAGER.query_users_count('WHERE level >= ?', (LEVELS['contributor'],))
+    num_moderators = USERMANAGER.query_users_count('WHERE level >= ?', (LEVELS['moderator'],))
+    return template('index', header=header, content=content, recipes=recipes, num_recipes=num_recipes, num_users=num_users, num_moderators=num_moderators, num_contributors=num_contributors)
+
+@route('/standards')
+def standards_page():
+    '''standards page'''
+    recipes = RECIPEMANAGER.query_recipes('ORDER BY datemodify LIMIT 10')
+    num_recipes = RECIPEMANAGER.get_recipe_count()
+    num_users = USERMANAGER.get_user_count()
+    num_contributors = USERMANAGER.query_users_count('WHERE level >= ?', (LEVELS['contributor'],))
+    num_moderators = USERMANAGER.query_users_count('WHERE level >= ?', (LEVELS['moderator'],))
+    return template('standards', recipes=recipes, num_recipes=num_recipes, num_users=num_users, num_moderators=num_moderators, num_contributors=num_contributors)
 
 @route('/search/<query>')
 def search_recipes(query=None):
     '''search recipes'''
-    recipes = RECIPEMANAGER.search_recipes(query)
     if is_json_request():
-        return dump_json(recipes)
-    if len(recipes) == 1:
-        return redirect('/recipe/{}'.format(recipes[0]['pkgname']))
-    elif not recipes:
-        users = USERMANAGER.search_users(query)
+        return dump_json(RECIPEMANAGER.query_recipes('WHERE pkgname MATCH ? ORDER BY pkgname', (query,)))
+    results, matches, pages, options = search(RECIPEMANAGER.query_recipes, RECIPEMANAGER.query_recipes_count, 'WHERE pkgname MATCH ?', (query,))
+    if len(results) == 1:
+        return redirect('/recipe/{}'.format(results[0]['pkgname']))
+    elif not results:
+        users = USERMANAGER.query_users('WHERE name MATCH ? LIMIT 1', (query,))
         if users:
             return redirect('/user/{}/recipes'.format(users[0]['name']))
-    return template('recipes', user=None, recipes=recipes, revisions=[])
+    return template('results', title=_('Search'), user=None, results=results, pages=pages, matches=matches, options=options)
 
 @route('/search')
 def search_recipes_query():
@@ -239,7 +290,7 @@ def search_recipes_query():
         abort(400, _('use /search/<query> instead'))
     query = request.query.get('q')
     if not query:
-        return template('recipes', user=None, recipes=[], revisions=[])
+        return template('recipes', user=None, results=[])
     return redirect('/search/{}'.format(query))
 
 @route('/recipes')
@@ -250,18 +301,22 @@ def recipes_page():
         if not os.path.exists(cachepath) or os.path.getmtime(cachepath) < RECIPEMANAGER.modified():
             with open(cachepath, 'w') as fle:
                 import json
-                recipes = RECIPEMANAGER.get_recipes()
+                recipes = RECIPEMANAGER.query_recipes('ORDER BY pkgname')
                 fle.write(json.dumps(recipes))
         return static_file('recipes.json', 'userdata/cache')
-    return template('recipes', user=None, recipes=RECIPEMANAGER.get_recipes(), revisions=[])
+    results, matches, pages, options = search(RECIPEMANAGER.query_recipes, RECIPEMANAGER.query_recipes_count)
+    return template('results', title=_('Recipes'), user=None, results=results, pages=pages, matches=matches, options=options)
 
 @route('/recipe/<pkgname>/<revision>')
 def recipe_revision_page(pkgname=None, revision=None):
     '''recipe revision page'''
-    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    if revision:
+        recipe = RECIPEMANAGER.get_revision(pkgname, revision)
+    else:
+        recipe = RECIPEMANAGER.get_recipe(pkgname)
     if not recipe:
         abort(404)
-    comments = RECIPEMANAGER.get_comments(pkgname, recipe['revision'])
+    comments = RECIPEMANAGER.query_comments('WHERE pkgname = ? AND revision = ?', (pkgname, recipe['revision']))
     if is_json_request():
         del recipe['recipedir']
         recipe['comments'] = comments
@@ -296,6 +351,8 @@ def adopt_recipe(pkgname=None):
     recipe = RECIPEMANAGER.get_recipe(pkgname)
     if not recipe:
         abort(400, _('recipe must exist'))
+    if recipe['maintainer']:
+        abort(403, _('this recipe is not abadoned'))
     RECIPEMANAGER.set_maintainer(pkgname, USER['name'])
     if is_json_request():
         return status_json_ok()
@@ -306,29 +363,43 @@ def adopt_recipe(pkgname=None):
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
 def delete_recipe_revision(pkgname=None, revision=None):
     '''delete recipe revision'''
-    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    if revision:
+        recipe = RECIPEMANAGER.get_revision(pkgname, revision)
+    else:
+        recipe = RECIPEMANAGER.get_recipe(pkgname)
     if not recipe:
         abort(400, _('recipe and revision must exist'))
     if not USER or (USER['level'] < LEVELS['moderator'] and USER['name'] != recipe['user']):
         abort(403)
-    RECIPEMANAGER.remove_recipe(pkgname, recipe['revision'], remove_revisions=True, remove_comments=True)
+    if revision:
+        RECIPEMANAGER.remove_revision(pkgname, recipe['revision'], remove_comments=True)
+    else:
+        RECIPEMANAGER.remove_recipe(pkgname, remove_revisions=True, remove_comments=True)
     if is_json_request():
         return status_json_ok()
     if recipe.get('parent'):
         return redirect('/recipe/{}'.format(pkgname))
     return redirect('/user/{}/recipes'.format(USER['name']))
 
+@route('/recipe/delete/<pkgname>', ['POST'])
+@session.valid_session(SESSIONMANAGER, not_valid_session_cb)
+@session.valid_session(SESSIONMANAGER, not_valid_session_cb)
+@session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
+def delete_recipe(pkgname=None):
+    '''delete recipe'''
+    return delete_recipe_revision(pkgname)
+
 @route('/recipe/reject/<pkgname>/<revision>', ['POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
 def reject_recipe_revision(pkgname=None, revision=None):
     '''reject recipe revision'''
-    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    recipe = RECIPEMANAGER.get_revision(pkgname, revision)
     if not recipe or not recipe.get('parent'):
         abort(400, _('recipe and revision must exist'))
     if not USER or USER['name'] != recipe['maintainer']:
         abort(403)
-    RECIPEMANAGER.remove_recipe(pkgname, recipe['revision'], remove_revisions=True, remove_comments=True)
+    RECIPEMANAGER.remove_revision(pkgname, recipe['revision'], remove_comments=True)
     if is_json_request():
         return status_json_ok()
     if revision:
@@ -340,12 +411,16 @@ def reject_recipe_revision(pkgname=None, revision=None):
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
 def accept_recipe_revision(pkgname=None, revision=None):
     '''reject recipe revision'''
-    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    recipe = RECIPEMANAGER.get_revision(pkgname, revision)
     if not recipe or not recipe.get('parent'):
         abort(400, _('recipe and revision must exist'))
     if not USER or USER['name'] != recipe['maintainer']:
         abort(403)
     RECIPEMANAGER.accept_revision(pkgname, revision)
+    user = USERMANAGER.get_user(recipe['user'])
+    if user and user['level'] < LEVELS['contributor']:
+        user['level'] = LEVELS['contributor']
+        USERMANAGER.set_user(user['name'], user)
     if is_json_request():
         return status_json_ok()
     if revision:
@@ -355,12 +430,26 @@ def accept_recipe_revision(pkgname=None, revision=None):
 @route('/user/<user>/recipes')
 def user_recipes(user=None):
     '''user recipes page'''
-    recipes = RECIPEMANAGER.get_recipes(user=user)
-    revisions = RECIPEMANAGER.get_revisions(user=user)
-    contribs = RECIPEMANAGER.get_recipes(contrib=user)
     if is_json_request():
-        return dump_json({'recipes': recipes, 'revisions': revisions, 'contributions': contribs})
-    return template('recipes', user=user, recipes=recipes, revisions=revisions, contributions=contribs)
+        return dump_json(RECIPEMANAGER.query_recipes('WHERE user = ? ORDER BY pkgname', (user,)))
+    results, matches, pages, options = search(RECIPEMANAGER.query_recipes, RECIPEMANAGER.query_recipes_count, 'WHERE user = ?', (user,))
+    return template('results', title='{} by {}'.format(_('Recipes'), user), user=user, results=results, pages=pages, matches=matches, options=options)
+
+@route('/user/<user>/revisions')
+def user_revisions(user=None):
+    '''user revisions page'''
+    if is_json_request():
+        return dump_json(RECIPEMANAGER.query_revisions('WHERE user = ? ORDER BY pkgname', (user,)))
+    results, matches, pages, options = search(RECIPEMANAGER.query_revisions, RECIPEMANAGER.query_revisions_count, 'WHERE user = ?', (user,))
+    return template('results', title='{} by {}'.format(_('Revisions'), user), user=user, results=results, pages=pages, matches=matches, options=options)
+
+@route('/user/<user>/contributions')
+def user_contributions(user=None):
+    '''user contributions page'''
+    if is_json_request():
+        return dump_json(RECIPEMANAGER.query_recipes('WHERE user != ? AND contributors MATCH ? ORDER BY pkgname', (user, "'{}'".format(user),)))
+    results, matches, pages, options = search(RECIPEMANAGER.query_recipes, RECIPEMANAGER.query_recipes_count, 'WHERE user != ? AND contributors MATCH ?', (user, "'{}'".format(user),))
+    return template('results', title='{} by {}'.format(_('Contributions'), user), user=user, results=results, pages=pages, matches=matches, options=options)
 
 @route('/comment/<pkgname>/<revision>', ['POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
@@ -370,7 +459,10 @@ def create_comment_for_revision(pkgname=None, revision=None):
     comment = request.forms.get('comment')
     if not comment:
         abort(400, _('comment field must be provided'))
-    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    if revision:
+        recipe = RECIPEMANAGER.get_revision(pkgname, revision)
+    else:
+        recipe = RECIPEMANAGER.get_recipe(pkgname)
     if not recipe:
         abort(400, _('recipe and revision must exist'))
     RECIPEMANAGER.create_comment(pkgname, recipe['revision'], USER['name'], comment)
@@ -390,7 +482,10 @@ def create_comment(pkgname=None):
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
 def delete_comment_from_revision(pkgname=None, revision=None, cid=None):
     '''delete comment from recipe revision'''
-    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    if revision:
+        recipe = RECIPEMANAGER.get_revision(pkgname, revision)
+    else:
+        recipe = RECIPEMANAGER.get_recipe(pkgname)
     if not recipe:
         abort(400, _('recipe and revision must exist'))
     comment = RECIPEMANAGER.get_comment(pkgname, recipe['revision'], cid)
@@ -408,12 +503,51 @@ def delete_comment(pkgname=None, cid=None):
     '''delete comment from recipe'''
     return delete_comment_from_revision(pkgname, None, cid)
 
-@route('/user/<user>/edit')
+@route('/user/<user>/edit', ['GET', 'POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
 def user_account(user=None):
     '''user account page'''
+    # pylint: disable=too-many-branches
+
     if USER['name'] != user:
         abort(403)
+
+    def gather_errors():
+        '''validate edit'''
+        errors = []
+        jsstr = js_translations('register')
+        email = request.forms.get('email')
+        password1 = request.forms.get('password')
+        password2 = request.forms.get('password_confirm')
+
+        if password1 != password2:
+            errors.append(jsstr['password_confirm'])
+        if not email or not re.match(r'[^@]+@[^@]+\.[^@]+', email):
+            errors.append(jsstr['email'])
+
+        if not errors:
+            if password1:
+                ret = USERMANAGER.get_user(user, SESSION['sessionid'], (password1, SESSION['CSRF']), email)
+            else:
+                ret = USERMANAGER.get_user(user, SESSION['sessionid'], email=email)
+            if not ret:
+                errors.append(_('Database error: Failed to create user into database'))
+            if password1:
+                logout()
+
+        return errors
+
+    if request.method == 'POST':
+        errors = gather_errors()
+        if not errors:
+            if is_json_request():
+                return status_json_ok()
+            return redirect('/user/{}/edit'.format(user))
+        else:
+            if is_json_request():
+                return dump_json({'status': 'fail', 'errors': errors})
+            return template('useredit', errors=errors)
+
     if is_json_request():
         sessions = []
         key_filter = ['CSRF', 'valid']
@@ -426,7 +560,7 @@ def user_account(user=None):
                     del data[key]
             sessions.append(data)
         return dump_json({'sessions': sessions})
-    return template('useredit')
+    return template('useredit', errors=[])
 
 @route('/revoke/<sessionid>', ['POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
@@ -533,7 +667,7 @@ def register():
             errors.append(jsstr['password_length'].format(8))
         if password1 != password2:
             errors.append(jsstr['password_confirm'])
-        if not re.match(r'[^@]+@[^@]+\.[^@]+', email):
+        if not email or not re.match(r'[^@]+@[^@]+\.[^@]+', email):
             errors.append(jsstr['email'])
 
         # create user
@@ -553,8 +687,10 @@ def register():
         if not errors:
             if is_json_request():
                 return status_json_ok()
+            # content = '<p>{}<br/>{}</p>'.format(_('Thank you for registering!'),
+            #                                     _('We have sent verification mail to your e-mail.'))
             content = '<p>{}<br/>{}</p>'.format(_('Thank you for registering!'),
-                                                _('We have sent verification mail to your e-mail.'))
+                                                _('You can now proceed to the login page.'))
             return template('register', content=content, errors=[])
         else:
             if is_json_request():
@@ -625,11 +761,13 @@ def get_favicon():
 @route('/dl/<pkgname>/<revision>/<recipefile>')
 def get_recipe_revision_file(pkgname=None, revision=None, recipefile=None):
     '''fetch recipe revision file'''
-    recipe = RECIPEMANAGER.get_recipe(pkgname, revision)
+    if revision:
+        recipe = RECIPEMANAGER.get_revision(pkgname, revision)
+    else:
+        recipe = RECIPEMANAGER.get_recipe(pkgname)
     if not recipe:
         abort(404)
-    path = os.path.join('userdata/recipes', recipe['pkgname'])
-    path = os.path.join(path, recipe['directory'])
+    path = os.path.join('userdata/recipes', recipe['pkgname'], recipe['directory'])
     if recipefile == 'PNDBUILD':
         if request.query.get('syntax'):
             data = None
@@ -640,19 +778,32 @@ def get_recipe_revision_file(pkgname=None, revision=None, recipefile=None):
             syntax = replace.syntax(data, 'bash')
             return syntax if is_ajax_request() else template('syntax', title='PNDBUILD', syntax=syntax)
         return static_file(recipefile, root=path, mimetype='text/plain')
-    return static_file(recipefile, root=path)
+    return static_file(recipefile, root=path, download=True, mimetype='application/octet-stream')
 
 @route('/dl/<pkgname>/<recipefile>')
 def get_recipe_file(pkgname=None, recipefile=None):
     '''fetch recipe file'''
     return get_recipe_revision_file(pkgname, None, recipefile)
 
-@route('/upload', method='POST')
+class UploadJSONFailure(Exception):
+    '''Exception raised when saving uploaded file failed'''
+    def __init__(self, message, httpcode):
+        Exception.__init__(self, message)
+        self.httpcode = httpcode
+
+def upload_fail(httpcode, msg):
+    '''return failure for upload'''
+    bottle.response.status = httpcode
+    bottle.response.content_type = 'application/json'
+    raise UploadJSONFailure(msg, httpcode)
+
+@route('/upload', method=['POST'])
 @session.valid_session(SESSIONMANAGER, not_valid_session_cb)
 @session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
 def post_upload():
     '''recipe upload'''
-    # pylint: disable=too-many-branches, too-many-statements
+    # pylint: disable=too-many-branches
+
     jsstr = js_translations('upload')
     data = request.files.get('recipe')
     name = request.query.get('recipe')
@@ -661,60 +812,141 @@ def post_upload():
     if data and not name:
         name = data.filename
 
-    class SaveJSONFailure(Exception):
-        '''Exception raised when saving uploaded file failed'''
-        def __init__(self, message, httpcode):
-            Exception.__init__(self, message)
-            self.httpcode = httpcode
-
-    def fail(httpcode, msg):
-        '''return failure for upload'''
-        bottle.response.status = httpcode
-        bottle.response.content_type = 'application/json'
-        raise SaveJSONFailure(msg, httpcode)
+    if 'tgz' in SESSION:
+        path = os.path.join('userdata/tmp', SESSION['tgz'])
+        if os.path.exists(path):
+            os.remove(path)
 
     def check_upload(name, data):
         '''check that upload is ok'''
         if not data or not data.file:
-            fail(400, _('File data is missing'))
+            upload_fail(400, _('File data is missing'))
         if data.content_length > 8192 * 1024:
-            fail(413, jsstr['file_size'])
+            upload_fail(413, jsstr['file_size'])
         if not name:
-            fail(400, _('POST/QUERY field named "recipe" is missing'))
+            upload_fail(400, _('POST/QUERY field named "recipe" is missing'))
         if len(name) > 11 and name[-11:] != '.src.tar.gz':
-            fail(400, _('Filename should end in .src.tar.gz'))
+            upload_fail(400, _('Filename should end in .src.tar.gz'))
         if name == 'PNDBUILD' or name.find('/') != -1:
-            fail(400, _('Invalid filename'))
+            upload_fail(400, _('Invalid filename'))
+
+    try:
+        check_upload(name, data)
+    except UploadJSONFailure as exc:
+        abort(exc.httpcode, str(exc))
+
+    revision = RECIPEMANAGER.allocate_revision()
+    name = '{}-{}'.format(revision, name)
+    path = os.path.join('userdata/tmp', name)
+    data.save(path)
+
+    md5 = md5sum(path)
+    if RECIPEMANAGER.md5_duplicate_exists(md5):
+        os.remove(path)
+        abort(409, _('This recipe is duplicate'))
+
+    recipe, pndbuild_data = parse_recipe(path)
+    parent = RECIPEMANAGER.get_recipe(recipe['pkgname'])
+    if parent:
+        from distutils.version import LooseVersion
+        pver = '{}.{}'.format(parent['pkgver'], parent['pkgrel'])
+        rver = '{}.{}'.format(recipe['pkgver'], recipe['pkgrel'])
+        if LooseVersion(rver) < LooseVersion(pver):
+            os.remove(path)
+            abort(400, _('Recipe is older version'))
+        if USER['name'] != parent['maintainer']:
+            SESSION['tgz'] = name
+            SESSIONMANAGER.save(SESSION)
+            content = template('revisionupload', tgz=name, revision=revision)
+            if is_json_request() or is_ajax_request():
+                return dump_json({'status': 'ok', 'content': content})
+            return content
+
+    return save_recipe(path, recipe, pndbuild_data, revision)
+
+@route('/upload/store', method=['POST'])
+@session.valid_session(SESSIONMANAGER, not_valid_session_cb)
+@session.check_csrf(SESSIONMANAGER, not_valid_csrf_cb)
+def store_recipe():
+    '''recipe store request from UI'''
+    name = request.forms.get('tgz')
+    revision = request.forms.get('revision')
+    changes = request.forms.get('changes')
+    if not name or not revision or not changes:
+        abort(400, 'name, revision and changes must not be empty')
+
+    if 'tgz' in SESSION:
+        del SESSION['tgz']
+        SESSIONMANAGER.save(SESSION)
+
+    path = os.path.join('userdata/tmp', name)
+    if request.forms.get('cancel'):
+        os.remove(path)
+        return redirect('/')
+
+    recipe, pndbuild_data = parse_recipe(path)
+    parent = RECIPEMANAGER.get_recipe(recipe['pkgname'])
+    if not parent:
+        os.remove(path)
+        abort(400, 'this package is not a revision')
+
+    original_data = None
+    origpath = os.path.join('userdata/recipes', parent['pkgname'], parent['directory'], 'PNDBUILD')
+    with open(origpath, 'r') as fle:
+        original_data = fle.read()
+
+    if not original_data:
+        os.remove(path)
+        abort(400, 'failed to read parent PNDBUILD')
+
+    from difflib import unified_diff
+    recipe['diff'] = '\n'.join(unified_diff(original_data.split('\n'), pndbuild_data.split('\n'), lineterm='')).strip()
+    recipe['changes'] = changes
+    return save_recipe(path, recipe, pndbuild_data, revision)
+
+def parse_recipe(path):
+    '''parse recipe data from tgz file'''
 
     def read_recipe(path):
         '''read recipe data from tar.gz'''
-        ret = None
         try:
             ret = pndbuild.readgz(path)
         except pndbuild.PNDBUILDException as exc:
-            fail(500, exc)
+            upload_fail(500, exc)
         recipe = ret[0]
         pndbuild_data = ret[1]
         if not pndbuild_data:
-            fail(500, _('PNDBUILD data is missing'))
+            upload_fail(500, _('PNDBUILD data is missing'))
         check = check_recipe(recipe)
         if not check[0]:
             if is_json_request():
-                fail(400, '\n'.join(check[1]))
+                upload_fail(400, '\n'.join(check[1]))
             else:
-                fail(400, '<br/>'.join(check[1]))
+                upload_fail(400, '<br/>'.join(check[1]))
         return ret
 
-    def save_recipe(tmppath, revision, recipe, pndbuild_data):
-        '''save recipe to filesystem'''
+    try:
+        ret = read_recipe(path)
+    except UploadJSONFailure as exc:
+        os.remove(path)
+        abort(exc.httpcode, str(exc))
+
+    return ret
+
+def save_recipe(path, recipe, pndbuild_data, revision):
+    '''save recipe to disk'''
+    # pylint: disable=too-many-branches
+
+    def move_to_recipe_directory(path, revision, recipe, pndbuild_data, md5):
+        '''move recipe to recipe storage directory'''
         recipedir = os.path.join('userdata/recipes', recipe['pkgname'], revision)
         dirname = os.path.dirname(recipedir)
 
         def cleanup():
             '''cleanup failed save'''
             import shutil
-            if os.path.exists(tmppath):
-                os.remove(tmppath)
+            if os.path.exists(path):
+                os.remove(path)
             if os.path.exists(recipedir):
                 shutil.rmtree(recipedir)
             if os.path.exists(dirname) and not os.listdir(dirname):
@@ -726,49 +958,41 @@ def post_upload():
             os.mkdir(recipedir)
         else:
             cleanup()
-            fail(500, _('Attempted to overwrite file'))
+            upload_fail(500, _('Attempted to overwrite file'))
 
         name = '{}-{}-{}.src.tar.gz'.format(recipe['pkgname'], recipe['pkgver'], recipe['pkgrel'])
-        os.rename(tmppath, os.path.join(recipedir, name))
+        os.rename(path, os.path.join(recipedir, name))
         with open(os.path.join(recipedir, 'PNDBUILD'), 'w') as fle:
             fle.write(pndbuild_data)
 
         try:
-            RECIPEMANAGER.create_recipe(USER['name'], revision, recipe)
+            RECIPEMANAGER.create_recipe(USER['name'], revision, recipe, md5)
         except Exception as exc:
             cleanup()
             raise exc
 
-    try:
-        check_upload(name, data)
-    except SaveJSONFailure as exc:
-        abort(exc.httpcode, str(exc))
-
-    revision = RECIPEMANAGER.allocate_revision()
-    name = '{}-{}'.format(revision, name)
-    tmppath = os.path.join('userdata/tmp', name)
-    data.save(tmppath)
+    md5 = md5sum(path)
+    if RECIPEMANAGER.md5_duplicate_exists(md5):
+        os.remove(path)
+        abort(409, _('This recipe is duplicate'))
 
     try:
-        ret = read_recipe(tmppath)
-    except SaveJSONFailure as exc:
-        os.remove(tmppath)
+        move_to_recipe_directory(path, revision, recipe, pndbuild_data, md5)
+    except UploadJSONFailure as exc:
         abort(exc.httpcode, str(exc))
 
-    recipe = ret[0]
-    pndbuild_data = ret[1]
-    try:
-        save_recipe(tmppath, revision, recipe, pndbuild_data)
-    except SaveJSONFailure as exc:
-        abort(exc.httpcode, str(exc))
-
-    recipe = RECIPEMANAGER.get_recipe(recipe['pkgname'], revision)
+    recipe = RECIPEMANAGER.get_recipe(recipe['pkgname'])
+    if not recipe:
+        recipe = RECIPEMANAGER.get_revision(recipe['pkgname'], revision)
     if not recipe:
         abort(500, _('Something went wrong with database'))
 
     url = '/recipe/{}'.format(recipe['pkgname'])
     if recipe.get('parent'):
         url = '{}/{}'.format(url, recipe['revision'])
+    elif USER['level'] < LEVELS['contributor']:
+        USER['level'] = LEVELS['contributor']
+        USERMANAGER.set_user(USER['name'], USER)
 
     if is_json_request() or is_ajax_request():
         return dump_json({'status': 'ok', 'url': url})
@@ -777,6 +1001,7 @@ def post_upload():
 @bottle.error(400)
 @bottle.error(403)
 @bottle.error(404)
+@bottle.error(409)
 @bottle.error(413)
 @bottle.error(500)
 def error_handler(error):
@@ -854,7 +1079,6 @@ def main():
     BaseTemplate.defaults['diff'] = lambda x: replace.syntax(x, 'diff')
 
     # run
-    bottle.debug(True)
     bottle.run(server=OPT['server'], host='0.0.0.0', port=OPT['port'])
 
 if __name__ == "__main__":

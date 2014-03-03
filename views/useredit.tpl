@@ -1,6 +1,6 @@
 % rebase('html_base.tpl', title=_('PUR - My Account'))
 
-<section class='box'>
+<section class='box errors'>
     <header>
         <h2>
             {{_('My Account')}}
@@ -11,10 +11,13 @@
         </h2>
     </header>
     <article>
-        <form action='/user/{{USER['name']}}/edit'>
-            <input class='email' name='email' placeholder="{{_('E-Mail')}}" value="{{USER['email']}}"/><br/>
-            <input class='password' name='password' placeholder="{{_('New Password')}}"/><br/>
-            <input class='password' name='password_confirm' placeholder="{{_('New Password')}}"/><br/>
+        % for error in errors:
+        <span>{{error}}</span>
+        % end
+        <form class='content-center js_register' method='POST'>
+            <input class='email' name='email' placeholder="{{_('E-Mail')}}" value="{{USER['email']}}" required/>
+            <input type='password' class='password' name='password' placeholder="{{_('New Password')}}"/>
+            <input type='password' class='password' name='password_confirm' placeholder="{{_('New Password')}}"/>
             <input type='submit' class='button' value="{{_('Update Information')}}"/>
             {{!csrf_input()}}
         </form>

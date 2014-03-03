@@ -1,4 +1,4 @@
-.pygments { background-color: #111; color:#CACACA; font-family: monospace; font-size: 12px; line-height: 1.1; overflow: auto; }
+.pygments { background-color: #111; color:#CACACA; font-family: monospace; font-size: 12px; line-height: 1.2; overflow: auto; }
 .comment .pygments, .revision .pygments { overflow: auto; max-height: 300px; }
 .pygments table { margin:0; background-color: #111 }
 .pygments, .pygments div, .pygments span, .pygments td { white-space: nowrap; }

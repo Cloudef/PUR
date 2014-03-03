@@ -69,7 +69,6 @@ def readgz(path):
     if split:
         basename = split[0]
 
-    print(basename)
     if not basename or os.path.exists(basename):
         raise PNDBUILDException('Invalid path or path exists')
 
@@ -93,8 +92,8 @@ def readgz(path):
         raise PNDBUILDException('PNDBUILD was not found inside archive')
 
     recipedic = {}
-    data = None
     try:
+        data = None
         recipedic = read(pndbuildpath)
         with open(pndbuildpath, 'r') as fle2:
             data = fle2.read()

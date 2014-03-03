@@ -1,6 +1,6 @@
 % rebase('html_base.tpl', title=_('PUR - Register'))
 
-<section class='box login content-center clearfix'>
+<section class='box errors login content-center clearfix'>
     <header>
         <a style='float:right; margin-top:8px;' href='/login'>{{_('Already registered?')}}</a>
         <h2>{{_('Register')}}</h2>
@@ -11,8 +11,8 @@
         % else:
         % for error in errors:
         <span>{{error}}</span>
-        %end
-        <form class='js_register width_33' method='post'>
+        % end
+        <form class='content-center js_register' method='POST'>
             <input class='username' name='username' placeholder="{{_('Username')}}" required/>
             <input class='email' name='email' placeholder="{{_('alien@ufo.com')}}" required/>
             <input id='password' class='password' type='password' name='password' placeholder="{{_('Password')}}" required/>

@@ -9,7 +9,7 @@ Python Standard Library.
 
 Homepage and documentation: http://bottlepy.org/
 
-Copyright (c) 2013, Marcel Hellkamp.
+Copyright (c) 2014, Marcel Hellkamp.
 License: MIT (see LICENSE for details)
 """
 
@@ -86,7 +86,7 @@ if py3k:
     from http.cookies import SimpleCookie
     from collections import MutableMapping as DictMixin
     import pickle
-    from io import BytesIO
+    from io import BytesIO, StringIO
     from configparser import ConfigParser
     basestring = str
     unicode = str
@@ -1216,7 +1216,7 @@ class BaseRequest(object):
             if key in self.environ: safe_env[key] = self.environ[key]
         args = dict(fp=self.body, environ=safe_env, keep_blank_values=True)
         if py31:
-            args['fp'] = NCTextIOWrapper(args['fp'], encoding='utf8',
+            args['fp'] = NCTextIOWrapper(args['fp'], encoding='latin1',
                                          newline='\n')
         elif py3k:
             args['encoding'] = 'utf8'
@@ -1224,6 +1224,8 @@ class BaseRequest(object):
         data = data.list or []
         for item in data:
             if item.filename:
+                if py31 and isinstance(item.file, StringIO):
+                    item.file = BytesIO(item.file.getvalue().encode('latin1'))
                 post[item.name] = FileUpload(item.file, item.name,
                                              item.filename, item.headers)
             else:
@@ -1997,7 +1999,7 @@ class ConfigDict(dict):
         self._on_change = lambda name, value: None
 
     def load_config(self, filename):
-        ''' Load values from an *.ini style config file.
+        ''' Load values from an ``*.ini`` style config file.
 
             If the config file contains sections, their names are used as
             namespaces for the values within. The two special sections
@@ -2016,6 +2018,7 @@ class ConfigDict(dict):
         ''' Load values from a dictionary structure. Nesting can be used to
             represent namespaces.
 
+            >>> c = ConfigDict()
             >>> c.load_dict({'some': {'namespace': {'key': 'value'} } })
             {'some.namespace.key': 'value'}
         '''
@@ -2246,6 +2249,8 @@ class FileUpload(object):
         while 1:
             buf = read(chunk_size)
             if not buf: break
+            if py31 and isinstance(buf, str):
+                buf = buf.encode('latin1')
             write(buf)
         self.file.seek(offset)
 
@@ -2544,6 +2549,7 @@ def auth_basic(check, realm="private", text="Access denied"):
     ''' Callback decorator to require HTTP auth (basic).
         TODO: Add route(check_auth=...) parameter. '''
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*a, **ka):
             user, password = request.auth or (None, None)
             if user is None or not check(user, password):

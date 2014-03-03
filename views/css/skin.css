@@ -34,9 +34,13 @@ h3.header {
 }
 
 ul {
-    list-style-type:none;
     margin:0;
+    padding-left:0;
+}
+
+li {
     padding-left:0.5em;
+    list-style-type:none;
 }
 
 table {
@@ -106,7 +110,6 @@ input.upload {
 input.comment {
     background:url('/images/comment.png') no-repeat scroll 95% center #FFF;
     width:74px;
-    height:2em;
     margin:0;
     text-align:left;
 }
@@ -203,13 +206,11 @@ button.toggle {
     width:300px;
 }
 
-.box.login input {
-    margin-right:auto;
-    margin-left:auto;
-    display:block;
+.box header input {
+    height:2em;
 }
 
-.box.login span {
+.box.errors span {
     color:#2A2A2A;
     background-color:#D81860;
     border:1px solid #D71750;
@@ -221,8 +222,14 @@ button.toggle {
     outline:none;
     text-align:center;
     font-weight:bold;
-    margin-right:auto;
     margin-left:auto;
+    margin-right:auto;
+    display:block;
+}
+
+form.content-center input {
+    margin-left:auto;
+    margin-right:auto;
     display:block;
 }
 

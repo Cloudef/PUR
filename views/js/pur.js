@@ -109,8 +109,15 @@ function _recipe_upload(buttons, strings)
                } else if (response.success === false) {
                   pbarerror.show().text(response.msg);
                   return false;
+               } else if (response.url != undefined) {
+                  window.location.href = response.url;
+                  return true;
+               } else if (response.content != undefined) {
+                  document.write(response.content);
+                  document.close();
                }
-               window.location.href = response.url;
+               pbarerror.show().text(strings['no_response']);
+               return false;
             }
       });
    });
@@ -194,6 +201,9 @@ function togglable_elements(elements)
 
 function setup_pur()
 {
+   // allow cache plz
+   $.ajaxSetup({cache: true });
+
    // no autocrap from mobile devices
    $(document).on('focus', ':input', function() {
        $(this).attr('autocomplete', 'off');

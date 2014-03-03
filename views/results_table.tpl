@@ -1,10 +1,27 @@
+% page, column, order = options.split(',')
+% page = int(page)
+% def lsort(x, s):
+%    if x != column or order != 'desc':
+%       sort = 'desc'
+%       symbol = '↑'
+%    else:
+%       sort = 'asc'
+%       symbol = '↓'
+%    end
+%    if x != column:
+%       symbol = '-'
+%    end
+%    url = '?p={},{},{}'.format(page, x, sort)
+%    return '{} {}'.format(link(url, s), symbol)
+% end
+
 <table>
     <tr class='header'>
-        <th><a href="#">{{_('Category')}}</a></th>
-        <th><a href="#">{{_('Name')}}</a></th>
+        <th>{{!lsort('pndcategory', _('Category'))}}</th>
+        <th>{{!lsort('pkgname', _('Name'))}}</th>
         <th>{{_('Version')}}</th>
         <th>{{_('Description')}}</th>
-        <th><a href="#">{{_('Maintainer')}}</a></th>
+        <th>{{!lsort('maintainer', _('Maintainer'))}}</th>
     </tr>
     % odd = ''
     % for recipe in recipes:

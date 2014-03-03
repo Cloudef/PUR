@@ -129,25 +129,24 @@ class BaseSession(object):
         if 'CSRF' not in data:
             data['CSRF'] = _gen_csrf()
 
-        # Cache agent
-        data['IP'] = bottle.request.environ.get('REMOTE_ADDR')
-        agent = bottle.request.headers.get('User-Agent')
-        if agent != data.get('agent'):
-            from lib.uasparser import UASparser
-            parser = UASparser(self.session_dir)
-            data['client'] = parser.parse(agent)
-            data['agent'] = agent
-            save = True
-
-        # cache geodata for sessions
-        if data['IP'] and (not data.get('geodata') or data['geodata']['ip'] != data['IP']):
-            from lib.freegeoip import get_geodata
-            geodata = get_geodata(data['IP'])
-            if geodata:
-                if data['IP'] == '127.0.0.1':
-                    geodata['city'] = 'Localhost Town'
-                data['geodata'] = geodata
+        if data['valid']:
+            # Cache agent
+            data['IP'] = bottle.request.environ.get('REMOTE_ADDR')
+            agent = bottle.request.headers.get('User-Agent')
+            if agent != data.get('agent'):
+                from lib.uasparser import UASparser
+                parser = UASparser(self.session_dir)
+                data['client'] = parser.parse(agent)
+                data['agent'] = agent
                 save = True
+
+            # Cache geodata for sessions
+            if data['IP'] and (not data.get('geodata') or data['geodata']['ip'] != data['IP']):
+                from lib.freegeoip import get_geodata
+                geodata = get_geodata(data['IP'])
+                if geodata:
+                    data['geodata'] = geodata
+                    save = True
 
         # save session if requested
         if save:

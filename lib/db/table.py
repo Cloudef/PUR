@@ -42,7 +42,7 @@ class Sqlite3Query(object):
 
     def execute(self, cur):
         '''execute query'''
-        print(self.query)
+        # print(self.query)
         cur.execute(self.query, self.qargs if self.qargs else ())
 
     def copy(self):
@@ -233,5 +233,16 @@ class Sqlite3Table(object):
         '''get first row data in table'''
         data = self.get(query.copy().append('LIMIT 1'))
         return data[0] if data else None
+
+    def qcount(self, query):
+        '''count query matches'''
+        query = query.copy().prepend('SELECT Count(*) FROM {}'.format(self.name))
+        con = sqlite3.connect(self.database)
+        con.create_function('match', 2, _match_pattern)
+        cur = con.cursor()
+        query.execute(cur)
+        ret = cur.fetchone()
+        con.close()
+        return ret[0] if ret else 0
 
 #  vim: set ts=8 sw=4 tw=0 :

@@ -1,11 +1,11 @@
 % # togglable javascript element
 
 <div class='js_togglable'>
-    <header>
-    {{!header}} <button class='js_toggle js_show'>{{'+' if hidden else '-'}}</button>
     % if right:
     <div style='float:right;'>{{!right}}</div>
     % end
+    <header>
+    {{!header}} <button class='js_toggle js_show'>{{'+' if hidden else '-'}}</button>
     </header>
     <article class="{{not hidden or 'js_hide'}}">
     {{!content}}
