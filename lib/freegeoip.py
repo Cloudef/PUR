@@ -11,7 +11,7 @@ def valid_ip(ipa):
     pattern = r"\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
     return re.match(pattern, ipa)
 
-def get_geodata(ipa):
+def get_geodata(ipa, timeout=25):
     """geocode IP"""
     if not valid_ip(ipa):
         raise ValueError('Invalid IP format', 'You must enter a valid ip format: X.X.X.X')
@@ -23,7 +23,7 @@ def get_geodata(ipa):
     url = 'http://freegeoip.net/json/{}'.format(ipa)
 
     try:
-        data = urlopen(url, timeout=5).readall().decode('UTF-8')
+        data = urlopen(url, timeout=timeout).readall().decode('UTF-8')
         if not data:
             return None
         return json.loads(data)
