@@ -1055,6 +1055,10 @@ def before_request():
 
 def main():
     '''main method'''
+    bottle.run(server=OPT['server'], host='0.0.0.0', port=OPT['port'])
+
+def setup():
+    '''setup method'''
     # set template globals
     BaseTemplate.defaults['PURVERSION'] = VERSION
     BaseTemplate.defaults['PURSTYLES'] = STYLES
@@ -1078,12 +1082,11 @@ def main():
     BaseTemplate.defaults['referrer_csrf_link'] = lambda x, y: '<form class="link" action="{}" method="POST"><input type="submit" class="link" value="{}"/>{}{}</form>'.format(x, x if not y else y, csrf_input(), referrer_input())
     BaseTemplate.defaults['diff'] = lambda x: replace.syntax(x, 'diff')
 
-    # run
-    bottle.run(server=OPT['server'], host='0.0.0.0', port=OPT['port'])
-
+setup()
 if __name__ == "__main__":
     main()
 else:
-    raise Exception('Should not be used as module')
+    # pylint: disable=invalid-name
+    application = bottle.default_app()
 
 #  vim: set ts=8 sw=4 tw=0 ft=python :
