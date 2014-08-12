@@ -1008,6 +1008,8 @@ def error_handler(error):
     '''error handler'''
     if is_json_request() or is_ajax_request():
         return dump_json({'status': 'fail', 'msg': error.body})
+    if _ is None:
+        return '{}'.format(error.status)
     return index_page('{}'.format(error.status), '<p>{}</p>'.format(error.body))
 
 @hook('before_request')
