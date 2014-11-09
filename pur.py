@@ -224,14 +224,14 @@ def search(fun, cfun, fmt=None, args=None):
     else:
         page = 1
         column = 'pkgname'
-        order = 'desc'
+        order = 'asc'
 
     if column not in ['pkgname', 'pndcategory', 'maintainer']:
         column = 'pkgname'
     if order not in ['desc', 'asc']:
-        order = 'desc'
+        order = 'asc'
 
-    results = fun('{} ORDER BY {} {} LIMIT {}, 100'.format(fmt, column, order, page - 1), args)
+    results = fun('{} ORDER BY {} COLLATE NOCASE {} LIMIT {}, 100'.format(fmt, column, order, page - 1), args)
     matches = cfun(fmt, args)
     pages = round(matches / 100) if matches > 100 else 1
     options = '{},{},{}'.format(page, column, order)
@@ -252,7 +252,7 @@ def index_page(header=None, content=None):
     '''main page with information'''
     if is_json_request():
         return dump_json({'CSRF': SESSION['CSRF']})
-    recipes = RECIPEMANAGER.query_recipes('ORDER BY datemodify LIMIT 10')
+    recipes = RECIPEMANAGER.query_recipes('ORDER BY datemodify DESC LIMIT 10')
     num_recipes = RECIPEMANAGER.get_recipe_count()
     num_users = USERMANAGER.get_user_count()
     num_contributors = USERMANAGER.query_users_count('WHERE level >= ?', (LEVELS['contributor'],))
@@ -262,7 +262,7 @@ def index_page(header=None, content=None):
 @route('/standards')
 def standards_page():
     '''standards page'''
-    recipes = RECIPEMANAGER.query_recipes('ORDER BY datemodify LIMIT 10')
+    recipes = RECIPEMANAGER.query_recipes('ORDER BY datemodify DESC LIMIT 10')
     num_recipes = RECIPEMANAGER.get_recipe_count()
     num_users = USERMANAGER.get_user_count()
     num_contributors = USERMANAGER.query_users_count('WHERE level >= ?', (LEVELS['contributor'],))

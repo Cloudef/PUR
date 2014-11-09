@@ -1,11 +1,11 @@
 % page, column, order = options.split(',')
 % page = int(page)
 % def lsort(x, s):
-%    if x != column or order != 'desc':
-%       sort = 'desc'
+%    if x != column or order != 'asc':
+%       sort = 'asc'
 %       symbol = '↑'
 %    else:
-%       sort = 'asc'
+%       sort = 'desc'
 %       symbol = '↓'
 %    end
 %    if x != column:
