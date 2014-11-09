@@ -30,7 +30,6 @@
                 continue
             end
             client = data.get('client')
-            geodata = data.get('geodata')
         %>
         <div class='session'>
             <header>
@@ -55,11 +54,6 @@
                 % end
                 % else:
                 {{_('Unknown Client')}}<br/>
-                % end
-                % if geodata and geodata.get('city'):
-                {{geodata['city']}}, {{geodata['country_name']}}
-                % else:
-                {{_('Unknown Location')}}
                 % end
             </article>
         </div>

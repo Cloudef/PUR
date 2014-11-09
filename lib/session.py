@@ -140,14 +140,6 @@ class BaseSession(object):
                 data['agent'] = agent
                 save = True
 
-            # Cache geodata for sessions
-            if data['IP'] and (not data.get('geodata') or data['geodata']['ip'] != data['IP']):
-                from lib.freegeoip import get_geodata
-                geodata = get_geodata(data['IP'])
-                if geodata:
-                    data['geodata'] = geodata
-                    save = True
-
         # save session if requested
         if save:
             self.save(data)
