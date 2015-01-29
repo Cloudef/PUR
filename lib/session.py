@@ -134,9 +134,6 @@ class BaseSession(object):
             data['IP'] = bottle.request.environ.get('REMOTE_ADDR')
             agent = bottle.request.headers.get('User-Agent')
             if agent != data.get('agent'):
-                from lib.uasparser import UASparser
-                parser = UASparser(self.session_dir)
-                data['client'] = parser.parse(agent)
                 data['agent'] = agent
                 save = True
 
