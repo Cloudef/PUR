@@ -1,5 +1,5 @@
 // PND User Repository Javascript
-// Enchances PUR exprience when javascript is enabled
+// Enchances PUR experience when javascript is enabled
 // pur.js
 
 function _validate_forms(forms, strings) {
