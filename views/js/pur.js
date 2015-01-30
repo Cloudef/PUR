@@ -145,7 +145,10 @@ function recipe_search(searchBars)
          queryTokenizer: Bloodhound.tokenizers.whitespace,
          limit: 10,
          // remote: '/search/%QUERY',
-         prefetch: '/recipes'
+         prefetch: {
+            ttl: 1,
+            url: '/recipes',
+         }
       });
 
       // do the magic
