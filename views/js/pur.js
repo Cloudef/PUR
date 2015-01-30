@@ -147,7 +147,7 @@ function recipe_search(searchBars)
          // remote: '/search/%QUERY',
          prefetch: {
             ttl: 1,
-            url: '/recipes',
+            url: '/recipes.json',
          }
       });
 

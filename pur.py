@@ -294,6 +294,9 @@ def search_recipes_query():
     return redirect('/search/{}'.format(query))
 
 @route('/recipes')
+# chromium does not follow Vary: header and browsers suck at caching
+# we use this for search result js
+@route('/recipes.json')
 def recipes_page():
     '''recipes page'''
     if is_json_request():
@@ -1054,6 +1057,9 @@ def before_request():
     BaseTemplate.defaults['_'] = _
     BaseTemplate.defaults['PURSTYLE'] = '{}.css'.format(style)
     BaseTemplate.defaults['USER'] = USER
+
+    # avoid json caches
+    bottle.response.set_header('Vary', 'accept')
 
 def main():
     '''main method'''
