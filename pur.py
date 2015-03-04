@@ -165,21 +165,40 @@ def check_recipe(data):
     if not data.get('pkgname'):
         ret = False
         msg.append(_('pkgname does not exist'))
-    elif data['pkgname'][0] == '-' or not PKGNAMEREX.match(data['pkgname']):
+
+    if isinstance(data['pkgname'], list):
+        data['pkgname'] = data['pkgname'][0]
+
+    if not isinstance(data['pkgname'], str) or data['pkgname'][0] == '-' or not PKGNAMEREX.match(data['pkgname']):
         ret = False
         msg.append(_('pkgname is not valid'))
 
-    if not data.get('pkgver') or data['pkgver'].find('-') != -1:
+    if data.get('pndcategory'):
+        if isinstance(data['pndcategory'], list):
+            data['pndcategory'] = data['pndcategory'][0]
+
+        if not isinstance(data['pndcategory']):
+            msg.append(_('pndcategory is not valid'))
+
+    if not isinstance(data['pkgver'], str) or not data.get('pkgver') or data['pkgver'].find('-') != -1:
         ret = False
         msg.append(_('pkgver should exist and not contain any hyphen'))
 
-    if not data.get('pkgrel') or int(data['pkgrel']) <= 0:
+    if not isinstance(data['pkgrel'], str) or not data.get('pkgrel') or int(data['pkgrel']) <= 0:
         ret = False
         msg.append(_('pkgrel should be >= 1'))
 
-    if not data.get('license'):
+    if not isinstance(data['license'], list) or not data.get('license') or not isinstance(data['license'][0], str) or not data['license'][0]:
         ret = False
-        msg.append(_('should contain license. if unknown or no license, set unknown'))
+        msg.append(_('should contain license array. if unknown or no license, set unknown'))
+
+    if data.get('source') and (not isinstance(data['source'], list) or not isinstance(data['source'][0], str) or not data['source'][0]):
+        ret = False
+        msg.append(_('source should be a array'))
+
+    if data.get('url') and not isinstance(data['url'], str):
+        ret = False
+        msg.append(_('url should be a string'))
 
     return (ret, msg) # success/failure, error messages
 
