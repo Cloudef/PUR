@@ -33,12 +33,6 @@
         %>
         <div class='session'>
             <header>
-                % if client and client.get('ua_icon'):
-                <img src="/images/ua/{{client.get('ua_icon')}}" alt="User-Agent"/>
-                % end
-                % if client and client.get('os_icon'):
-                <img src="/images/os/{{client.get('os_icon')}}" alt="OS"/>
-                % end
                 % if session == USER['session']:
                 <strong>{{_('Current')}}</strong>
                 % else:
@@ -47,14 +41,6 @@
                 <div style='float:right;'>IP: {{data.get('IP') or _('Unknown IP')}}</div>
             </header>
             <article>
-                % if client:
-                {{client.get('ua_name')}} on {{client.get('os_name')}}<br/>
-                % if data.get('agent'):
-                {{data.get('agent')}}<br/>
-                % end
-                % else:
-                {{_('Unknown Client')}}<br/>
-                % end
             </article>
         </div>
         % end
